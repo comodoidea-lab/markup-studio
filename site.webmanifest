@@ -1,0 +1,21 @@
+{
+  "name": "Markup - UI feedback for AI",
+  "short_name": "Markup",
+  "description": "UIスクリーンショットへ視覚的な修正指示を加え、AI向けプロンプトを生成します。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f3ed",
+  "theme_color": "#ff5a36",
+  "icons": [
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
