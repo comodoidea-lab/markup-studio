@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16.png" />
     <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="./site.webmanifest" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=5" />
   </head>
   <body>
     <header class="topbar">
@@ -85,20 +85,34 @@
             <div class="stage" id="stage">
               <img id="sourceImage" alt="注釈対象のUIスクリーンショット" />
               <div class="demo-page" id="demoPage">
-                <nav class="demo-nav">
-                  <span class="demo-logo">NOON</span>
-                  <div><span>Collections</span><span>About</span><span>Journal</span></div>
-                  <button>Cart · 0</button>
-                </nav>
-                <div class="demo-hero">
-                  <p>New collection · 2026</p>
-                  <h2>Objects for<br />quiet moments.</h2>
-                  <button>Explore collection <span>↗</span></button>
+                <div class="demo-guide-heading">
+                  <p>Markup quick guide</p>
+                  <h2>スクリーンショットに、<br />見たまま指示する。</h2>
+                  <span>この画面へ直接、範囲や矢印を描いて試せます。</span>
                 </div>
-                <div class="demo-card">
-                  <div class="demo-art"></div>
-                  <p>Stoneware / No. 04</p>
+                <div class="demo-guide-steps">
+                  <article>
+                    <span class="demo-step-number">01</span>
+                    <div class="demo-step-icon">＋</div>
+                    <h3>画像を入れる</h3>
+                    <p>ファイルを選ぶか、<br />クリップボードから追加</p>
+                  </article>
+                  <span class="demo-step-arrow">→</span>
+                  <article>
+                    <span class="demo-step-number">02</span>
+                    <div class="demo-step-icon demo-step-icon-accent">↗</div>
+                    <h3>修正箇所を示す</h3>
+                    <p>範囲・ピン・矢印・文字・色で<br />意図を視覚化</p>
+                  </article>
+                  <span class="demo-step-arrow">→</span>
+                  <article>
+                    <span class="demo-step-number">03</span>
+                    <div class="demo-step-icon">AI</div>
+                    <h3>エージェントへ渡す</h3>
+                    <p>注釈付き画像とプロンプトを<br />コピーして実装へ</p>
+                  </article>
                 </div>
+                <p class="demo-guide-tip">まずは上のツールを選び、このガイドを囲んでみてください。</p>
               </div>
               <svg id="annotationLayer" aria-label="注釈レイヤー"></svg>
               <div class="empty-state" id="emptyState">
@@ -107,10 +121,16 @@
                 <span>PNG / JPG / WebP</span>
               </div>
             </div>
-            <label class="replace-image">
-              <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" />
-              <span>＋ 画像を読み込む</span>
-            </label>
+            <div class="image-source-actions">
+              <label class="replace-image">
+                <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" />
+                <span>＋ ファイルを選ぶ</span>
+              </label>
+              <button class="paste-image" id="pasteImage" type="button">
+                <span class="paste-image-icon">⌘V</span>
+                クリップボードから追加
+              </button>
+            </div>
           </div>
         </div>
 
@@ -142,9 +162,38 @@
               </div>
             </div>
             <pre id="promptPreview">注釈を追加すると、ここにAI向けの指示が生成されます。</pre>
-            <button class="button button-dark" id="copyPrompt">Copy to clipboard</button>
+            <div class="prompt-actions">
+              <button class="button prompt-copy-button" id="copyPrompt">Copy prompt</button>
+              <button class="button button-dark" id="insertAgent">Insert into agent</button>
+            </div>
           </div>
         </aside>
+      </section>
+
+      <section class="agent-setup" aria-labelledby="agentSetupTitle">
+        <div class="agent-setup-intro">
+          <p class="eyebrow">Agent setup</p>
+          <h2 id="agentSetupTitle">いつものAIエージェントから、<br />すぐにレビューを始める。</h2>
+          <p>
+            下のプロンプトをCodexやCursorへ一度貼り付けると、スクリーンショットを
+            Markupで開き、注釈をもとに修正する流れを共有できます。
+          </p>
+        </div>
+
+        <div class="starter-card">
+          <div class="starter-card-heading">
+            <div>
+              <p class="starter-kicker">Quick start</p>
+              <h3>スタータープロンプト</h3>
+            </div>
+            <button class="starter-copy" id="copyStarterPrompt" type="button">コピー</button>
+          </div>
+          <pre id="starterPrompt" aria-label="スタータープロンプト"></pre>
+          <div class="starter-links">
+            <a href="./start.md" target="_blank" rel="noreferrer">start.md</a>
+            <a href="./skill/SKILL.md" target="_blank" rel="noreferrer">Markup Skill</a>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -160,17 +209,21 @@
         aria-describedby="guideDescription"
       >
         <button class="guide-close" type="button" data-close-guide aria-label="閉じる">×</button>
-        <p class="eyebrow">Visual feedback workspace</p>
-        <h2 id="guideTitle">見たまま指示して、<br />AIに正確に伝える。</h2>
+        <p class="eyebrow">How to use Markup</p>
+        <h2 id="guideTitle">スクショに描いて、<br />そのまま実装へ。</h2>
         <p id="guideDescription">
-          UIのスクリーンショット上で修正箇所を囲み、意図を添えるだけ。
-          実装に使える構造化プロンプトへ変換します。
+          通常のブラウザ利用に加えて、CodexやCursorなどのAIエージェントから
+          スクリーンショットを開くこともできます。
         </p>
         <ol class="guide-steps">
-          <li><span>01</span>スクリーンショットを読み込む</li>
-          <li><span>02</span>範囲・矢印・文字・色で修正箇所を示す</li>
-          <li><span>03</span>画像とAIプロンプトをコピーする</li>
+          <li><span>01</span>ファイル・クリップボード・エージェントから画像を開く</li>
+          <li><span>02</span>範囲・矢印・文字・色で修正内容を示す</li>
+          <li><span>03</span>「画像をコピー」と「Copy AI prompt」を使う</li>
+          <li><span>04</span>エージェントへ戻り「Markupの指示どおり修正して」と伝える</li>
         </ol>
+        <a class="guide-skill-link" href="./skill/SKILL.md" target="_blank" rel="noreferrer">
+          Markup Skillを見る <span>↗</span>
+        </a>
       </section>
     </div>
 
@@ -201,6 +254,6 @@
       </article>
     </template>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=5"></script>
   </body>
 </html>

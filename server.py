@@ -7,6 +7,38 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 class MarkupHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
+        if self.path == "/api/copy-text":
+            self.copy_text()
+            return
+        if self.path == "/api/copy-image":
+            self.copy_image()
+            return
+        self.send_error(404)
+
+    def copy_text(self):
+        content_type = self.headers.get("Content-Type", "")
+        content_length = int(self.headers.get("Content-Length", "0"))
+        if not content_type.startswith("text/plain") or content_length <= 0:
+            self.send_error(400, "Expected plain text")
+            return
+
+        text_data = self.rfile.read(content_length)
+        try:
+            subprocess.run(
+                ["pbcopy"],
+                input=text_data,
+                check=True,
+                capture_output=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError):
+            self.send_error(500, "Could not write to the system clipboard")
+            return
+
+        self.send_response(204)
+        self.end_headers()
+
+    def copy_image(self):
         if self.path != "/api/copy-image":
             self.send_error(404)
             return

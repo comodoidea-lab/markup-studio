@@ -17,6 +17,10 @@ const toolbarColorSwatch = document.querySelector("#toolbarColorSwatch");
 const guideModal = document.querySelector("#guideModal");
 const openGuideButton = document.querySelector("#openGuide");
 const toast = document.querySelector("#toast");
+const starterPrompt = document.querySelector("#starterPrompt");
+const copyStarterPromptButton = document.querySelector("#copyStarterPrompt");
+const pasteImageButton = document.querySelector("#pasteImage");
+const insertAgentButton = document.querySelector("#insertAgent");
 
 let annotations = [];
 let activeTool = "rect";
@@ -625,14 +629,55 @@ function loadImage(file) {
   const reader = new FileReader();
   reader.addEventListener("load", async () => {
     currentBoardId = sanitizeId(`review-${Date.now().toString(36)}`);
-    currentBoardTitle = file.name || "UI Review";
+    currentBoardTitle = file.name || "Clipboard image";
     setBoardUrl(currentBoardId);
     await applyImageSource(reader.result);
+    imageInput.value = "";
   });
   reader.readAsDataURL(file);
 }
 
 imageInput.addEventListener("change", (event) => loadImage(event.target.files[0]));
+
+function imageFromClipboardItems(items) {
+  for (const item of items) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      return item.getAsFile();
+    }
+  }
+  return null;
+}
+
+async function pasteImageFromClipboard() {
+  if (!navigator.clipboard?.read) {
+    showToast("このブラウザでは直接読み取れません。⌘Vで画像を貼り付けてください", 4000);
+    return;
+  }
+
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imageType = item.types.find((type) => type.startsWith("image/"));
+      if (!imageType) continue;
+      loadImage(await item.getType(imageType));
+      showToast("クリップボードの画像を読み込みました");
+      return;
+    }
+    showToast("クリップボードに画像がありません", 3000);
+  } catch {
+    showToast("読み取りが許可されませんでした。⌘Vで画像を貼り付けてください", 4000);
+  }
+}
+
+pasteImageButton.addEventListener("click", pasteImageFromClipboard);
+
+document.addEventListener("paste", (event) => {
+  const image = imageFromClipboardItems(event.clipboardData?.items || []);
+  if (!image) return;
+  event.preventDefault();
+  loadImage(image);
+  showToast("クリップボードの画像を読み込みました");
+});
 
 ["dragenter", "dragover"].forEach((name) => {
   dropZone.addEventListener(name, (event) => {
@@ -675,6 +720,19 @@ function copyWithSelectionFallback(text) {
 }
 
 async function writeClipboard(text) {
+  if (["127.0.0.1", "localhost"].includes(location.hostname)) {
+    try {
+      const response = await fetch("/api/copy-text", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: text,
+      });
+      if (response.ok) return true;
+    } catch {
+      // Fall through to the browser clipboard APIs.
+    }
+  }
+
   if (window.isSecureContext && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text);
@@ -699,6 +757,21 @@ async function copyPrompt() {
     return;
   }
 
+  showToast("コピーできませんでした。プロンプト欄から手動でコピーしてください", 3500);
+}
+
+async function insertIntoAgent() {
+  if (!annotations.length) {
+    showToast("先に注釈を追加してください");
+    return;
+  }
+
+  const handoff = `Markupの指示どおり修正して\n\n${promptPreview.textContent}`;
+  const copied = await writeClipboard(handoff);
+  if (copied) {
+    showToast("エージェントへ渡す内容をコピーしました");
+    return;
+  }
   showToast("コピーできませんでした。プロンプト欄から手動でコピーしてください", 3500);
 }
 
@@ -976,6 +1049,27 @@ function showToast(message, duration = 1800) {
   window.setTimeout(() => toast.classList.remove("show"), duration);
 }
 
+function getStarterPrompt() {
+  const startUrl = new URL("./start.md", location.href).href;
+  return `Markupオンボーディングを開始してください:\n${startUrl}`;
+}
+
+async function copyStarterPrompt() {
+  const text = getStarterPrompt();
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(starterPrompt);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.execCommand("copy");
+    selection.removeAllRanges();
+  }
+  showToast("スタータープロンプトをコピーしました");
+}
+
 function openGuide() {
   guideModal.hidden = false;
   document.body.classList.add("modal-open");
@@ -1146,7 +1240,10 @@ window.addEventListener("message", async (event) => {
 
 document.querySelector("#copyPrompt").addEventListener("click", copyPrompt);
 document.querySelector("#copyPromptTop").addEventListener("click", copyPrompt);
+insertAgentButton.addEventListener("click", insertIntoAgent);
 copyImageButton.addEventListener("click", copyAnnotatedImage);
+starterPrompt.textContent = getStarterPrompt();
+copyStarterPromptButton.addEventListener("click", copyStarterPrompt);
 openGuideButton.addEventListener("click", openGuide);
 guideModal.querySelectorAll("[data-close-guide]").forEach((element) => {
   element.addEventListener("click", closeGuide);
