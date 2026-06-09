@@ -23,24 +23,25 @@
         </span>
         <span>Markup</span>
       </a>
+      <p class="header-subtitle">Visual feedback workspace</p>
       <div class="topbar-actions">
-        <span class="save-state"><span class="save-dot"></span>Local draft</span>
+        <button
+          class="guide-button"
+          id="openGuide"
+          type="button"
+          aria-label="使い方を表示"
+          aria-haspopup="dialog"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
+            <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z" />
+          </svg>
+        </button>
         <button class="button button-primary" id="copyPromptTop">Copy AI prompt</button>
       </div>
     </header>
 
     <main class="app-shell">
-      <section class="intro">
-        <div>
-          <p class="eyebrow">Visual feedback workspace</p>
-          <h1>見たまま指示して、<br />AIに正確に伝える。</h1>
-        </div>
-        <p class="intro-copy">
-          UIのスクリーンショット上で修正箇所を囲み、意図を添えるだけ。
-          実装に使える構造化プロンプトへ変換します。
-        </p>
-      </section>
-
       <section class="workspace">
         <div class="canvas-column">
           <div class="canvas-toolbar">
@@ -148,6 +149,30 @@
     </main>
 
     <div class="toast" id="toast" role="status">コピーしました</div>
+
+    <div class="guide-modal" id="guideModal" hidden>
+      <div class="guide-backdrop" data-close-guide></div>
+      <section
+        class="guide-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guideTitle"
+        aria-describedby="guideDescription"
+      >
+        <button class="guide-close" type="button" data-close-guide aria-label="閉じる">×</button>
+        <p class="eyebrow">Visual feedback workspace</p>
+        <h2 id="guideTitle">見たまま指示して、<br />AIに正確に伝える。</h2>
+        <p id="guideDescription">
+          UIのスクリーンショット上で修正箇所を囲み、意図を添えるだけ。
+          実装に使える構造化プロンプトへ変換します。
+        </p>
+        <ol class="guide-steps">
+          <li><span>01</span>スクリーンショットを読み込む</li>
+          <li><span>02</span>範囲・矢印・文字・色で修正箇所を示す</li>
+          <li><span>03</span>画像とAIプロンプトをコピーする</li>
+        </ol>
+      </section>
+    </div>
 
     <template id="instructionTemplate">
       <article class="instruction-card">

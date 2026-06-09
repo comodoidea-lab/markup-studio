@@ -14,6 +14,8 @@ const clearButton = document.querySelector("#clearButton");
 const copyImageButton = document.querySelector("#copyImage");
 const toolbarColor = document.querySelector("#toolbarColor");
 const toolbarColorSwatch = document.querySelector("#toolbarColorSwatch");
+const guideModal = document.querySelector("#guideModal");
+const openGuideButton = document.querySelector("#openGuide");
 const toast = document.querySelector("#toast");
 
 let annotations = [];
@@ -840,9 +842,28 @@ function showToast(message, duration = 1800) {
   window.setTimeout(() => toast.classList.remove("show"), duration);
 }
 
+function openGuide() {
+  guideModal.hidden = false;
+  document.body.classList.add("modal-open");
+  guideModal.querySelector(".guide-close").focus();
+}
+
+function closeGuide() {
+  guideModal.hidden = true;
+  document.body.classList.remove("modal-open");
+  openGuideButton.focus();
+}
+
 document.querySelector("#copyPrompt").addEventListener("click", copyPrompt);
 document.querySelector("#copyPromptTop").addEventListener("click", copyPrompt);
 copyImageButton.addEventListener("click", copyAnnotatedImage);
+openGuideButton.addEventListener("click", openGuide);
+guideModal.querySelectorAll("[data-close-guide]").forEach((element) => {
+  element.addEventListener("click", closeGuide);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !guideModal.hidden) closeGuide();
+});
 
 try {
   const saved = JSON.parse(localStorage.getItem("markup-annotations") || "[]");
