@@ -1,0 +1,7 @@
+{
+  "name": "markup",
+  "version": "0.1.0",
+  "skill": "/skill/SKILL.md",
+  "bridge": "/docs/agent-bridge-api.md",
+  "cli": "/cli/markup.mjs"
+}

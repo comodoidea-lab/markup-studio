@@ -24,6 +24,13 @@ let outputFormat = "markdown";
 let drawing = null;
 let nextId = 1;
 let selectedColor = toolbarColor.value;
+let currentBoardId = boardIdFromLocation() || "default";
+let currentBoardTitle = "UI Review";
+let saveTimer = null;
+
+const MARKUP_DB_NAME = "markup-agent-boards";
+const MARKUP_DB_VERSION = 1;
+const MARKUP_MESSAGE_TYPES = new Set(["markup:import", "markup:clear"]);
 
 const typeLabels = {
   layout: "レイアウト",
@@ -32,6 +39,133 @@ const typeLabels = {
   remove: "削除",
   behavior: "動作",
 };
+
+function boardIdFromLocation() {
+  const match = location.hash.match(/^#local=([a-zA-Z0-9_-]+)$/);
+  return match ? match[1] : "";
+}
+
+function sanitizeId(value, fallback = "board") {
+  const sanitized = String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return sanitized || `${fallback}-${Date.now().toString(36)}`;
+}
+
+function annotationStorageKey(boardId = currentBoardId) {
+  return `markup-annotations:${boardId}`;
+}
+
+function hasStoredAnnotations(boardId = currentBoardId) {
+  return localStorage.getItem(annotationStorageKey(boardId)) !== null;
+}
+
+function openMarkupDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(MARKUP_DB_NAME, MARKUP_DB_VERSION);
+    request.addEventListener("upgradeneeded", () => {
+      if (!request.result.objectStoreNames.contains("boards")) {
+        request.result.createObjectStore("boards", { keyPath: "id" });
+      }
+    });
+    request.addEventListener("success", () => resolve(request.result));
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+async function readBoard(boardId) {
+  const db = await openMarkupDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("boards", "readonly");
+    const request = transaction.objectStore("boards").get(boardId);
+    request.addEventListener("success", () => resolve(request.result || null));
+    request.addEventListener("error", () => reject(request.error));
+  });
+}
+
+async function writeBoard(board) {
+  const db = await openMarkupDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("boards", "readwrite");
+    transaction.objectStore("boards").put(board);
+    transaction.addEventListener("complete", resolve);
+    transaction.addEventListener("error", () => reject(transaction.error));
+  });
+}
+
+async function deleteBoard(boardId) {
+  const db = await openMarkupDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("boards", "readwrite");
+    transaction.objectStore("boards").delete(boardId);
+    transaction.addEventListener("complete", resolve);
+    transaction.addEventListener("error", () => reject(transaction.error));
+  });
+}
+
+function setBoardUrl(boardId) {
+  history.replaceState(
+    null,
+    "",
+    `${location.pathname}#local=${encodeURIComponent(boardId)}`,
+  );
+}
+
+function loadAnnotations(boardId = currentBoardId) {
+  try {
+    const boardAnnotations = JSON.parse(
+      localStorage.getItem(annotationStorageKey(boardId)) || "null",
+    );
+    if (Array.isArray(boardAnnotations)) return boardAnnotations;
+    if (boardId === "default") {
+      const legacy = JSON.parse(localStorage.getItem("markup-annotations") || "[]");
+      return Array.isArray(legacy) ? legacy : [];
+    }
+  } catch {
+    return [];
+  }
+  return [];
+}
+
+function scheduleBoardSave() {
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(async () => {
+    if (!sourceImage.src || sourceImage.style.display === "none") return;
+    try {
+      await writeBoard({
+        id: currentBoardId,
+        title: currentBoardTitle,
+        image: sourceImage.src,
+        annotations,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch {
+      // The visible review loop remains usable even if browser storage is unavailable.
+    }
+  }, 250);
+}
+
+function applyImageSource(src, { clearAnnotations = true } = {}) {
+  return new Promise((resolve, reject) => {
+    if (typeof src !== "string" || !src.trim()) {
+      reject(new Error("画像データがありません"));
+      return;
+    }
+
+    sourceImage.onload = () => {
+      sourceImage.style.display = "block";
+      demoPage.style.display = "none";
+      if (clearAnnotations) annotations = [];
+      render();
+      scheduleBoardSave();
+      resolve();
+    };
+    sourceImage.onerror = () => reject(new Error("画像を読み込めませんでした"));
+    sourceImage.src = src;
+  });
+}
 
 function pointFromEvent(event) {
   const bounds = stage.getBoundingClientRect();
@@ -327,7 +461,8 @@ function updateMeta() {
 }
 
 function persist() {
-  localStorage.setItem("markup-annotations", JSON.stringify(annotations));
+  localStorage.setItem(annotationStorageKey(), JSON.stringify(annotations));
+  scheduleBoardSave();
 }
 
 function render() {
@@ -488,12 +623,11 @@ clearButton.addEventListener("click", () => {
 function loadImage(file) {
   if (!file || !file.type.startsWith("image/")) return;
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    sourceImage.src = reader.result;
-    sourceImage.style.display = "block";
-    demoPage.style.display = "none";
-    annotations = [];
-    render();
+  reader.addEventListener("load", async () => {
+    currentBoardId = sanitizeId(`review-${Date.now().toString(36)}`);
+    currentBoardTitle = file.name || "UI Review";
+    setBoardUrl(currentBoardId);
+    await applyImageSource(reader.result);
   });
   reader.readAsDataURL(file);
 }
@@ -854,6 +988,162 @@ function closeGuide() {
   openGuideButton.focus();
 }
 
+function normalizeImportPayload(payload) {
+  const image = payload?.images?.[0] || payload?.image;
+  const src =
+    typeof image === "string" ? image : image?.src || image?.dataUrl || image?.url;
+  if (!src) throw new Error("importBoard requires one image.");
+  if (src.length > 20 * 1024 * 1024) {
+    throw new Error("The imported image payload is too large.");
+  }
+  if (!/^(data:image\/|https?:\/\/)/i.test(src)) {
+    throw new Error("Only image data URLs and HTTP(S) image URLs are accepted.");
+  }
+
+  return {
+    boardId: sanitizeId(payload.boardId || payload.storageKey || `review-${Date.now()}`),
+    title: String(payload.title || image?.title || "UI Review").slice(0, 120),
+    src,
+  };
+}
+
+async function importBoard(payload) {
+  const imported = normalizeImportPayload(payload);
+  currentBoardId = imported.boardId;
+  currentBoardTitle = imported.title;
+  localStorage.removeItem(annotationStorageKey(currentBoardId));
+  annotations = [];
+  nextId = 1;
+  await applyImageSource(imported.src);
+  setBoardUrl(currentBoardId);
+  await writeBoard({
+    id: currentBoardId,
+    title: currentBoardTitle,
+    image: sourceImage.src,
+    annotations: [],
+    updatedAt: new Date().toISOString(),
+  });
+  return {
+    boardId: currentBoardId,
+    title: currentBoardTitle,
+    url: location.href,
+    imageCount: 1,
+  };
+}
+
+async function clearImportedBoard(payload = {}) {
+  const boardId = sanitizeId(payload.boardId || currentBoardId);
+  localStorage.removeItem(annotationStorageKey(boardId));
+  await deleteBoard(boardId);
+  if (boardId === currentBoardId) {
+    annotations = [];
+    sourceImage.removeAttribute("src");
+    sourceImage.style.display = "none";
+    demoPage.style.display = "block";
+    currentBoardId = "default";
+    currentBoardTitle = "UI Review";
+    history.replaceState(null, "", location.pathname + location.search);
+    render();
+  }
+  return { boardId, cleared: true };
+}
+
+function getBoardSnapshot() {
+  return {
+    version: 1,
+    boardId: currentBoardId,
+    title: currentBoardTitle,
+    image: sourceImage.src || null,
+    annotations: structuredClone(annotations),
+  };
+}
+
+async function restoreBoardFromLocation() {
+  const boardId = boardIdFromLocation();
+  if (!boardId) {
+    annotations = loadAnnotations("default");
+    nextId = Math.max(0, ...annotations.map((item) => Number(item.id) || 0)) + 1;
+    render();
+    return { restored: false };
+  }
+
+  currentBoardId = boardId;
+  const board = await readBoard(boardId);
+  if (!board?.image) {
+    annotations = loadAnnotations(boardId);
+    render();
+    return { restored: false, boardId };
+  }
+
+  currentBoardTitle = board.title || "UI Review";
+  const localAnnotations = loadAnnotations(boardId);
+  annotations = hasStoredAnnotations(boardId)
+    ? localAnnotations
+    : Array.isArray(board.annotations)
+      ? board.annotations
+      : [];
+  nextId = Math.max(0, ...annotations.map((item) => Number(item.id) || 0)) + 1;
+  await applyImageSource(board.image, { clearAnnotations: false });
+  return { restored: true, boardId };
+}
+
+const markupReady = restoreBoardFromLocation().catch(() => {
+  annotations = loadAnnotations(currentBoardId);
+  render();
+  return { restored: false };
+});
+
+window.Markup = {
+  version: 1,
+  ready: async () => {
+    await markupReady;
+    return { version: 1, ready: true };
+  },
+  importBoard,
+  clearBoard: clearImportedBoard,
+  getSnapshot: async () => {
+    await markupReady;
+    return getBoardSnapshot();
+  },
+};
+
+window.addEventListener("message", async (event) => {
+  const message = event.data;
+  if (!message || !MARKUP_MESSAGE_TYPES.has(message.type)) return;
+
+  const expectedToken = new URL(location.href).searchParams.get("token");
+  if (expectedToken ? message.token !== expectedToken : event.origin !== location.origin) return;
+
+  const responseTarget = event.source;
+  try {
+    const result =
+      message.type === "markup:import"
+        ? await importBoard(message.payload)
+        : await clearImportedBoard(message.payload);
+    responseTarget?.postMessage(
+      {
+        type: "markup:ack",
+        ok: true,
+        requestId: message.requestId,
+        command: message.type,
+        summary: result,
+      },
+      event.origin === "null" ? "*" : event.origin,
+    );
+  } catch (error) {
+    responseTarget?.postMessage(
+      {
+        type: "markup:error",
+        ok: false,
+        requestId: message.requestId,
+        command: message.type,
+        errorMessage: error.message,
+      },
+      event.origin === "null" ? "*" : event.origin,
+    );
+  }
+});
+
 document.querySelector("#copyPrompt").addEventListener("click", copyPrompt);
 document.querySelector("#copyPromptTop").addEventListener("click", copyPrompt);
 copyImageButton.addEventListener("click", copyAnnotatedImage);
@@ -864,15 +1154,3 @@ guideModal.querySelectorAll("[data-close-guide]").forEach((element) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !guideModal.hidden) closeGuide();
 });
-
-try {
-  const saved = JSON.parse(localStorage.getItem("markup-annotations") || "[]");
-  if (Array.isArray(saved)) {
-    annotations = saved;
-    nextId = Math.max(0, ...annotations.map((item) => Number(item.id) || 0)) + 1;
-  }
-} catch {
-  annotations = [];
-}
-
-render();

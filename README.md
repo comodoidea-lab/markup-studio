@@ -10,6 +10,20 @@ UIスクリーンショットへ視覚的な修正指示を加え、AI向けのM
 - 注釈付きPNGの生成
 - AI向けMarkdown / JSONプロンプトの生成
 - ブラウザ内への下書き保存
+- AIエージェントからのスクリーンショット自動投入
+
+## Agent integration
+
+画像ファイルがある場合、CLIヘルパーからMarkupボードを開けます。
+
+```bash
+node cli/markup.mjs open \
+  --image screenshot.png \
+  --url https://your-markup.example/
+```
+
+ブラウザ自動化からは`window.Markup.importBoard(payload)`または`postMessage`を利用できます。
+詳細は[`docs/agent-bridge-api.md`](./docs/agent-bridge-api.md)を参照してください。
 
 ## Vercel
 

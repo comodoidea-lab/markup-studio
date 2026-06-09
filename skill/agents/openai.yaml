@@ -1,0 +1,10 @@
+interface:
+  display_name: "Markup"
+  short_description: "スクリーンショットへ描いてAIにUI修正を伝える"
+  icon_small: "./assets/icon-192.png"
+  icon_large: "./assets/icon-512.png"
+  brand_color: "#FF5A36"
+  default_prompt: "Use $markup to open this screenshot for visual UI review."
+
+policy:
+  allow_implicit_invocation: true

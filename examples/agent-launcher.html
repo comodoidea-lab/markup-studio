@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Markup Agent Bridge Example</title>
+    <style>
+      iframe {
+        width: 100%;
+        height: 85vh;
+        margin-top: 16px;
+        border: 1px solid #d9d9d0;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="open">Load example review</button>
+    <p id="error" hidden>Markup did not confirm the import.</p>
+    <iframe id="board" title="Markup review board" allow="clipboard-write"></iframe>
+    <script>
+      const token = crypto.randomUUID();
+      const requestId = crypto.randomUUID();
+      const boardUrl = new URL("../", location.href);
+      boardUrl.searchParams.set("token", token);
+      const board = document.querySelector("#board");
+      let timeout;
+
+      const demoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750">
+        <rect width="1200" height="750" fill="#f4f3ed"/>
+        <rect x="100" y="100" width="1000" height="550" rx="24" fill="#fff"/>
+        <text x="160" y="230" font-family="Arial" font-size="72" fill="#171813">Agent Bridge Ready</text>
+        <text x="160" y="315" font-family="Arial" font-size="32" fill="#6c6d65">This image was injected with postMessage.</text>
+        <rect x="160" y="400" width="300" height="90" rx="12" fill="#ff5a36"/>
+        <text x="220" y="457" font-family="Arial" font-size="28" fill="#fff">Review this button</text>
+      </svg>`;
+
+      function send() {
+        board.contentWindow.postMessage(
+          {
+            type: "markup:import",
+            token,
+            requestId,
+            payload: {
+              boardId: "agent-bridge-example",
+              title: "Agent Bridge Example",
+              images: [
+                {
+                  id: "example",
+                  role: "primary",
+                  src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(demoSvg)}`,
+                },
+              ],
+            },
+          },
+          boardUrl.origin,
+        );
+      }
+
+      document.querySelector("#open").addEventListener("click", () => {
+        document.querySelector("#error").hidden = true;
+        board.src = boardUrl;
+        board.addEventListener("load", send, { once: true });
+        window.clearTimeout(timeout);
+        timeout = window.setTimeout(() => {
+          document.querySelector("#error").hidden = false;
+        }, 5000);
+      });
+
+      window.addEventListener("message", (event) => {
+        if (event.origin !== boardUrl.origin || event.data?.requestId !== requestId) return;
+        window.clearTimeout(timeout);
+        document.querySelector("#error").hidden = event.data.type === "markup:ack";
+      });
+    </script>
+  </body>
+</html>
