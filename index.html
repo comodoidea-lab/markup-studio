@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="スクリーンショットへ直接指示を書き込み、AI向けのUI修正プロンプトを生成します。"
+    />
+    <title>Markup — UI feedback for AI</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Markup ホーム">
+        <span class="brand-mark">M</span>
+        <span>Markup</span>
+      </a>
+      <div class="topbar-actions">
+        <span class="save-state"><span class="save-dot"></span>Local draft</span>
+        <button class="button button-primary" id="copyPromptTop">Copy AI prompt</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="intro">
+        <div>
+          <p class="eyebrow">Visual feedback workspace</p>
+          <h1>見たまま指示して、<br />AIに正確に伝える。</h1>
+        </div>
+        <p class="intro-copy">
+          UIのスクリーンショット上で修正箇所を囲み、意図を添えるだけ。
+          実装に使える構造化プロンプトへ変換します。
+        </p>
+      </section>
+
+      <section class="workspace">
+        <div class="canvas-column">
+          <div class="canvas-toolbar">
+            <div class="tool-group" aria-label="注釈ツール">
+              <button class="tool active" data-tool="rect" title="範囲を囲む">
+                <span class="tool-icon rect-icon"></span><span>範囲</span>
+              </button>
+              <button class="tool" data-tool="pin" title="位置を示す">
+                <span class="tool-icon pin-icon">＋</span><span>ピン</span>
+              </button>
+              <button class="tool" data-tool="arrow" title="矢印を描く">
+                <span class="tool-icon arrow-icon">↗</span><span>矢印</span>
+              </button>
+              <button class="tool" data-tool="text" title="文字を配置">
+                <span class="tool-icon text-icon">T</span><span>文字</span>
+              </button>
+              <div class="color-tool-wrap">
+                <button class="tool" data-tool="color" title="指定色を範囲へ適用">
+                  <span class="tool-icon color-icon" id="toolbarColorSwatch"></span><span>色</span>
+                </button>
+                <input
+                  id="toolbarColor"
+                  class="toolbar-color-input"
+                  type="color"
+                  value="#2563eb"
+                  aria-label="指定する色"
+                />
+              </div>
+            </div>
+            <div class="toolbar-meta">
+              <span id="annotationCount">0 annotations</span>
+              <button class="image-copy-button" id="copyImage" title="注釈付き画像をコピー">
+                画像をコピー
+              </button>
+              <button class="icon-button" id="undoButton" title="ひとつ戻す" disabled>↶</button>
+              <button class="icon-button" id="clearButton" title="すべて消去" disabled>⌫</button>
+            </div>
+          </div>
+
+          <div class="stage-wrap" id="dropZone">
+            <div class="stage" id="stage">
+              <img id="sourceImage" alt="注釈対象のUIスクリーンショット" />
+              <div class="demo-page" id="demoPage">
+                <nav class="demo-nav">
+                  <span class="demo-logo">NOON</span>
+                  <div><span>Collections</span><span>About</span><span>Journal</span></div>
+                  <button>Cart · 0</button>
+                </nav>
+                <div class="demo-hero">
+                  <p>New collection · 2026</p>
+                  <h2>Objects for<br />quiet moments.</h2>
+                  <button>Explore collection <span>↗</span></button>
+                </div>
+                <div class="demo-card">
+                  <div class="demo-art"></div>
+                  <p>Stoneware / No. 04</p>
+                </div>
+              </div>
+              <svg id="annotationLayer" aria-label="注釈レイヤー"></svg>
+              <div class="empty-state" id="emptyState">
+                <div class="upload-icon">↑</div>
+                <strong>スクリーンショットをドロップ</strong>
+                <span>PNG / JPG / WebP</span>
+              </div>
+            </div>
+            <label class="replace-image">
+              <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" />
+              <span>＋ 画像を読み込む</span>
+            </label>
+          </div>
+        </div>
+
+        <aside class="sidebar">
+          <div class="sidebar-heading">
+            <div>
+              <p class="eyebrow">Instructions</p>
+              <h2>修正指示</h2>
+            </div>
+            <span class="count-badge" id="sidebarCount">0</span>
+          </div>
+
+          <div class="instruction-list" id="instructionList">
+            <div class="sidebar-empty">
+              <span>01</span>
+              <p>左の画面で修正したい場所をドラッグして囲んでください。</p>
+            </div>
+          </div>
+
+          <div class="prompt-panel">
+            <div class="prompt-heading">
+              <div>
+                <p class="eyebrow">Output</p>
+                <h3>AI prompt</h3>
+              </div>
+              <div class="segmented" role="group" aria-label="出力形式">
+                <button class="active" data-format="markdown">MD</button>
+                <button data-format="json">JSON</button>
+              </div>
+            </div>
+            <pre id="promptPreview">注釈を追加すると、ここにAI向けの指示が生成されます。</pre>
+            <button class="button button-dark" id="copyPrompt">Copy to clipboard</button>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status">コピーしました</div>
+
+    <template id="instructionTemplate">
+      <article class="instruction-card">
+        <div class="instruction-top">
+          <span class="instruction-number"></span>
+          <select class="instruction-type" aria-label="修正の種類">
+            <option value="layout">レイアウト</option>
+            <option value="style">見た目</option>
+            <option value="copy">テキスト</option>
+            <option value="remove">削除</option>
+            <option value="behavior">動作</option>
+          </select>
+          <button class="delete-instruction" title="この指示を削除">×</button>
+        </div>
+        <textarea
+          class="instruction-text"
+          rows="3"
+          placeholder="例：見出しを左揃えにして、上下の余白を広げる"
+        ></textarea>
+        <div class="instruction-color-row" hidden>
+          <label>変更後の色</label>
+          <input class="instruction-color" type="color" />
+          <code class="instruction-color-value"></code>
+        </div>
+        <div class="instruction-coords"></div>
+      </article>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
