@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="スクリーンショットへ直接指示を書き込み、AI向けのUI修正プロンプトを生成します。"
+      content="スクリーンショットやWebアプリへ直接指示を書き込み、AI向けのUI修正プロンプトを生成します。"
     />
     <title>Markup — UI feedback for AI</title>
     <meta name="theme-color" content="#ff5a36" />
@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16.png" />
     <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="./site.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=5" />
+    <link rel="stylesheet" href="./styles.css?v=6" />
   </head>
   <body>
     <header class="topbar">
@@ -84,6 +84,18 @@
           <div class="stage-wrap" id="dropZone">
             <div class="stage" id="stage">
               <img id="sourceImage" alt="注釈対象のUIスクリーンショット" />
+              <iframe
+                id="liveFrame"
+                title="注釈対象のWebアプリ"
+                allow="clipboard-read; clipboard-write"
+              ></iframe>
+              <div class="live-mode-bar" id="liveModeBar" hidden>
+                <span id="liveModeStatus">注釈モード</span>
+                <div class="live-mode-actions" role="group" aria-label="Webアプリの操作モード">
+                  <button type="button" data-live-mode="interact">Webアプリを操作</button>
+                  <button class="active" type="button" data-live-mode="annotate">注釈を描く</button>
+                </div>
+              </div>
               <div class="demo-page" id="demoPage">
                 <div class="demo-guide-heading">
                   <p>Markup quick guide</p>
@@ -94,8 +106,8 @@
                   <article>
                     <span class="demo-step-number">01</span>
                     <div class="demo-step-icon">＋</div>
-                    <h3>画像を入れる</h3>
-                    <p>ファイルを選ぶか、<br />クリップボードから追加</p>
+                    <h3>画面を開く</h3>
+                    <p>画像を読み込むか、<br />WebアプリのURLを指定</p>
                   </article>
                   <span class="demo-step-arrow">→</span>
                   <article>
@@ -131,6 +143,21 @@
                 クリップボードから追加
               </button>
             </div>
+            <form class="live-url-form" id="liveUrlForm">
+              <span class="live-url-label">Live URL</span>
+              <input
+                id="liveUrlInput"
+                type="url"
+                inputmode="url"
+                placeholder="http://localhost:3000 または https://example.com"
+                aria-label="WebアプリのURL"
+                required
+              />
+              <button type="submit">Webアプリを開く</button>
+            </form>
+            <p class="live-url-note">
+              iframe表示を禁止しているサイトは開けません。ライブ画面では注釈付き画像のコピーは利用できません。
+            </p>
           </div>
         </div>
 
@@ -216,7 +243,7 @@
           スクリーンショットを開くこともできます。
         </p>
         <ol class="guide-steps">
-          <li><span>01</span>ファイル・クリップボード・エージェントから画像を開く</li>
+          <li><span>01</span>画像を読み込むか、WebアプリのURLを開く</li>
           <li><span>02</span>範囲・矢印・文字・色で修正内容を示す</li>
           <li><span>03</span>「画像をコピー」と「Copy AI prompt」を使う</li>
           <li><span>04</span>エージェントへ戻り「Markupの指示どおり修正して」と伝える</li>
@@ -254,6 +281,6 @@
       </article>
     </template>
 
-    <script src="./app.js?v=5"></script>
+    <script src="./app.js?v=6"></script>
   </body>
 </html>

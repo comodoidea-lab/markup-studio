@@ -460,9 +460,77 @@ button {
   pointer-events: none;
 }
 
+#liveFrame {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: none;
+  background: #fff;
+  border: 0;
+}
+
 #annotationLayer {
   z-index: 5;
   overflow: visible;
+}
+
+.stage.live-interaction {
+  cursor: default;
+}
+
+.stage.live-interaction #annotationLayer {
+  pointer-events: none;
+}
+
+.stage:not(.live-interaction) #liveFrame {
+  pointer-events: none;
+}
+
+.live-mode-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 8;
+  padding: 5px 5px 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  background: rgba(251, 250, 245, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(25, 26, 22, 0.13);
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.live-mode-bar[hidden] {
+  display: none;
+}
+
+.live-mode-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.live-mode-actions button {
+  padding: 6px 9px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.live-mode-actions button.active {
+  color: var(--white);
+  background: var(--accent);
 }
 
 .annotation-shape {
@@ -732,6 +800,68 @@ button {
   font-family: "SFMono-Regular", Consolas, monospace;
   font-size: 9px;
   line-height: 1;
+}
+
+.live-url-form {
+  width: min(720px, 100%);
+  margin-top: 9px;
+  padding: 5px;
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  background: #f1f0e9;
+  border: 1px solid var(--line);
+}
+
+.live-url-label {
+  padding-left: 7px;
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.live-url-form input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid #d3d2ca;
+  border-radius: 2px;
+  outline: 0;
+  font-size: 10px;
+}
+
+.live-url-form input:focus {
+  border-color: #ffab96;
+}
+
+.live-url-form button {
+  height: 32px;
+  padding: 0 12px;
+  color: var(--white);
+  background: var(--dark);
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.live-url-form button:hover {
+  background: var(--accent);
+}
+
+.live-url-note {
+  width: min(720px, 100%);
+  margin: 6px 0 0;
+  color: #92938b;
+  font-size: 8px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .sidebar {

@@ -4,6 +4,11 @@ const instructionList = document.querySelector("#instructionList");
 const template = document.querySelector("#instructionTemplate");
 const imageInput = document.querySelector("#imageInput");
 const sourceImage = document.querySelector("#sourceImage");
+const liveFrame = document.querySelector("#liveFrame");
+const liveModeBar = document.querySelector("#liveModeBar");
+const liveModeStatus = document.querySelector("#liveModeStatus");
+const liveUrlForm = document.querySelector("#liveUrlForm");
+const liveUrlInput = document.querySelector("#liveUrlInput");
 const demoPage = document.querySelector("#demoPage");
 const dropZone = document.querySelector("#dropZone");
 const promptPreview = document.querySelector("#promptPreview");
@@ -30,6 +35,9 @@ let nextId = 1;
 let selectedColor = toolbarColor.value;
 let currentBoardId = boardIdFromLocation() || "default";
 let currentBoardTitle = "UI Review";
+let currentSourceType = "demo";
+let currentLiveUrl = "";
+let liveInteractionEnabled = false;
 let saveTimer = null;
 
 const MARKUP_DB_NAME = "markup-agent-boards";
@@ -136,12 +144,14 @@ function loadAnnotations(boardId = currentBoardId) {
 function scheduleBoardSave() {
   window.clearTimeout(saveTimer);
   saveTimer = window.setTimeout(async () => {
-    if (!sourceImage.src || sourceImage.style.display === "none") return;
+    if (currentSourceType === "demo") return;
     try {
       await writeBoard({
         id: currentBoardId,
         title: currentBoardTitle,
-        image: sourceImage.src,
+        sourceType: currentSourceType,
+        image: currentSourceType === "image" ? sourceImage.src : null,
+        liveUrl: currentSourceType === "live" ? currentLiveUrl : null,
         annotations,
         updatedAt: new Date().toISOString(),
       });
@@ -159,7 +169,13 @@ function applyImageSource(src, { clearAnnotations = true } = {}) {
     }
 
     sourceImage.onload = () => {
+      currentSourceType = "image";
+      currentLiveUrl = "";
       sourceImage.style.display = "block";
+      liveFrame.style.display = "none";
+      liveFrame.removeAttribute("src");
+      liveModeBar.hidden = true;
+      stage.classList.remove("live-interaction");
       demoPage.style.display = "none";
       if (clearAnnotations) annotations = [];
       render();
@@ -169,6 +185,50 @@ function applyImageSource(src, { clearAnnotations = true } = {}) {
     sourceImage.onerror = () => reject(new Error("画像を読み込めませんでした"));
     sourceImage.src = src;
   });
+}
+
+function normalizeLiveUrl(value) {
+  const input = String(value || "").trim();
+  if (!input) throw new Error("WebアプリのURLを入力してください");
+  const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(input) ? input : `http://${input}`;
+  const url = new URL(withProtocol);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("HTTPまたはHTTPSのURLを入力してください");
+  }
+  const isLoopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (location.protocol === "https:" && url.protocol === "http:" && !isLoopback) {
+    throw new Error("HTTPS版のMarkupではHTTPSのWebアプリを指定してください");
+  }
+  return url.href;
+}
+
+function setLiveInteraction(enabled) {
+  liveInteractionEnabled = Boolean(enabled);
+  stage.classList.toggle("live-interaction", liveInteractionEnabled);
+  liveModeStatus.textContent = liveInteractionEnabled ? "操作モード" : "注釈モード";
+  liveModeBar.querySelectorAll("[data-live-mode]").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.dataset.liveMode === (liveInteractionEnabled ? "interact" : "annotate"),
+    );
+  });
+}
+
+function applyLiveSource(url, { clearAnnotations = true } = {}) {
+  currentSourceType = "live";
+  currentLiveUrl = normalizeLiveUrl(url);
+  currentBoardTitle = new URL(currentLiveUrl).hostname || "Live UI Review";
+  sourceImage.removeAttribute("src");
+  sourceImage.style.display = "none";
+  demoPage.style.display = "none";
+  liveFrame.src = currentLiveUrl;
+  liveFrame.style.display = "block";
+  liveModeBar.hidden = false;
+  liveUrlInput.value = currentLiveUrl;
+  setLiveInteraction(false);
+  if (clearAnnotations) annotations = [];
+  render();
+  scheduleBoardSave();
 }
 
 function pointFromEvent(event) {
@@ -387,11 +447,15 @@ function renderInstructions() {
 }
 
 function promptData() {
+  const isLive = currentSourceType === "live";
   return {
-    task: "添付したUIスクリーンショットを、以下の注釈に従って修正してください。",
+    task: isLive
+      ? "以下のWebアプリを、画面上の注釈に従って修正してください。"
+      : "添付したUIスクリーンショットを、以下の注釈に従って修正してください。",
     context: {
-      coordinateSystem: "画像左上を原点とするパーセント座標",
+      coordinateSystem: "表示領域の左上を原点とするパーセント座標",
       preserveUnmentionedAreas: true,
+      ...(isLive ? { targetUrl: currentLiveUrl } : {}),
     },
     instructions: annotations.map((annotation, index) => ({
       id: index + 1,
@@ -426,9 +490,11 @@ function markdownPrompt(data) {
     "",
     data.task,
     "指定していない箇所のデザインと挙動は維持してください。",
-    "",
-    "## 修正内容",
   ];
+  if (data.context.targetUrl) {
+    lines.push("", "## 対象URL", "", data.context.targetUrl);
+  }
+  lines.push("", "## 修正内容");
 
   data.instructions.forEach((item) => {
     let target;
@@ -462,6 +528,10 @@ function updateMeta() {
   sidebarCount.textContent = String(count);
   undoButton.disabled = count === 0;
   clearButton.disabled = count === 0;
+  copyImageButton.title =
+    currentSourceType === "live"
+      ? "ライブ画面は画像化できません。スクリーンショットを読み込んでください"
+      : "注釈付き画像をコピー";
 }
 
 function persist() {
@@ -516,6 +586,8 @@ function focusLatestInstruction() {
 
 stage.addEventListener("pointerdown", (event) => {
   if (event.button !== 0) return;
+  if (event.target.closest?.(".live-mode-bar")) return;
+  if (currentSourceType === "live" && liveInteractionEnabled) return;
   const point = pointFromEvent(event);
   if (activeTool === "pin") {
     addPin(point);
@@ -594,6 +666,7 @@ stage.addEventListener("pointerup", () => {
 
 document.querySelectorAll(".tool").forEach((button) => {
   button.addEventListener("click", () => {
+    if (currentSourceType === "live") setLiveInteraction(false);
     activeTool = button.dataset.tool;
     document.querySelectorAll(".tool").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
@@ -638,6 +711,24 @@ function loadImage(file) {
 }
 
 imageInput.addEventListener("change", (event) => loadImage(event.target.files[0]));
+
+liveUrlForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  try {
+    currentBoardId = sanitizeId(`live-${Date.now().toString(36)}`);
+    setBoardUrl(currentBoardId);
+    applyLiveSource(liveUrlInput.value);
+    showToast("Webアプリを開きました。表示されない場合はiframeが禁止されています", 4000);
+  } catch (error) {
+    showToast(error.message, 3500);
+  }
+});
+
+liveModeBar.querySelectorAll("[data-live-mode]").forEach((button) => {
+  button.addEventListener("click", () => {
+    setLiveInteraction(button.dataset.liveMode === "interact");
+  });
+});
 
 function imageFromClipboardItems(items) {
   for (const item of items) {
@@ -904,6 +995,11 @@ function drawAnnotationsOnCanvas(context, width, height) {
 }
 
 function createAnnotatedCanvas() {
+  if (currentSourceType === "live") {
+    throw new Error(
+      "ライブ画面はブラウザ制約で画像化できません。スクリーンショットを読み込んでコピーしてください",
+    );
+  }
   if (!sourceImage.src || sourceImage.style.display === "none") {
     throw new Error("画像を読み込んでください");
   }
@@ -1113,7 +1209,9 @@ async function importBoard(payload) {
   await writeBoard({
     id: currentBoardId,
     title: currentBoardTitle,
+    sourceType: "image",
     image: sourceImage.src,
+    liveUrl: null,
     annotations: [],
     updatedAt: new Date().toISOString(),
   });
@@ -1133,7 +1231,12 @@ async function clearImportedBoard(payload = {}) {
     annotations = [];
     sourceImage.removeAttribute("src");
     sourceImage.style.display = "none";
+    liveFrame.removeAttribute("src");
+    liveFrame.style.display = "none";
+    liveModeBar.hidden = true;
     demoPage.style.display = "block";
+    currentSourceType = "demo";
+    currentLiveUrl = "";
     currentBoardId = "default";
     currentBoardTitle = "UI Review";
     history.replaceState(null, "", location.pathname + location.search);
@@ -1147,7 +1250,9 @@ function getBoardSnapshot() {
     version: 1,
     boardId: currentBoardId,
     title: currentBoardTitle,
-    image: sourceImage.src || null,
+    sourceType: currentSourceType,
+    image: currentSourceType === "image" ? sourceImage.src || null : null,
+    liveUrl: currentSourceType === "live" ? currentLiveUrl : null,
     annotations: structuredClone(annotations),
   };
 }
@@ -1163,7 +1268,7 @@ async function restoreBoardFromLocation() {
 
   currentBoardId = boardId;
   const board = await readBoard(boardId);
-  if (!board?.image) {
+  if (!board?.image && !board?.liveUrl) {
     annotations = loadAnnotations(boardId);
     render();
     return { restored: false, boardId };
@@ -1177,7 +1282,11 @@ async function restoreBoardFromLocation() {
       ? board.annotations
       : [];
   nextId = Math.max(0, ...annotations.map((item) => Number(item.id) || 0)) + 1;
-  await applyImageSource(board.image, { clearAnnotations: false });
+  if (board.sourceType === "live" || board.liveUrl) {
+    applyLiveSource(board.liveUrl, { clearAnnotations: false });
+  } else {
+    await applyImageSource(board.image, { clearAnnotations: false });
+  }
   return { restored: true, boardId };
 }
 
