@@ -17,6 +17,8 @@ export function SettingsModal() {
   const setKey = useSettingsStore((state) => state.setKey);
   const setModel = useSettingsStore((state) => state.setModel);
   const openSettings = useSettingsStore((state) => state.openSettings);
+  const persistKeys = useSettingsStore((state) => state.persistKeys);
+  const setPersistKeys = useSettingsStore((state) => state.setPersistKeys);
 
   if (!open) return null;
 
@@ -76,6 +78,21 @@ export function SettingsModal() {
             </div>
           ))}
         </div>
+
+        <label className="mt-3 flex items-start gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={persistKeys}
+            onChange={(event) => setPersistKeys(event.target.checked)}
+          />
+          <span>
+            APIキーをこのブラウザに保存する
+            <span className="block text-[10.5px] text-slate-400">
+              オフにすると共有PC向けにセッション限定保存になり、タブを閉じるとキーは消去されます
+            </span>
+          </span>
+        </label>
 
         <button
           className="mt-4 w-full rounded-xl bg-slate-900 py-2 text-sm font-semibold text-white hover:bg-slate-800"

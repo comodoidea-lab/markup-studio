@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { AIProvider, AISettings } from "./types";
 
 const STORAGE_KEY = "markup-ai-settings";
+const SESSION_KEYS_KEY = "markup-ai-session-keys";
 
 const DEFAULTS: AISettings = {
   provider: "anthropic",
@@ -13,34 +14,56 @@ const DEFAULTS: AISettings = {
   },
 };
 
-function loadSettings(): AISettings {
+interface StoredSettings extends AISettings {
+  persistKeys: boolean;
+}
+
+function loadSettings(): StoredSettings {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if (!stored) return DEFAULTS;
+    if (!stored) return { ...DEFAULTS, persistKeys: true };
+    const persistKeys = stored.persistKeys !== false;
+    let keys = { ...DEFAULTS.keys, ...stored.keys };
+    if (!persistKeys) {
+      const sessionKeys = JSON.parse(sessionStorage.getItem(SESSION_KEYS_KEY) || "null");
+      keys = { ...DEFAULTS.keys, ...(sessionKeys || {}) };
+    }
     return {
       provider: stored.provider ?? DEFAULTS.provider,
-      keys: { ...DEFAULTS.keys, ...stored.keys },
+      keys,
       models: { ...DEFAULTS.models, ...stored.models },
+      persistKeys,
     };
   } catch {
-    return DEFAULTS;
+    return { ...DEFAULTS, persistKeys: true };
   }
 }
 
-interface SettingsState extends AISettings {
+interface SettingsState extends StoredSettings {
   settingsOpen: boolean;
   setProvider: (provider: AIProvider) => void;
   setKey: (provider: AIProvider, key: string) => void;
   setModel: (provider: AIProvider, model: string) => void;
+  setPersistKeys: (persist: boolean) => void;
   openSettings: (open: boolean) => void;
   hasKey: () => boolean;
 }
 
-function persist(state: AISettings) {
+function persist(state: StoredSettings) {
   localStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ provider: state.provider, keys: state.keys, models: state.models }),
+    JSON.stringify({
+      provider: state.provider,
+      models: state.models,
+      persistKeys: state.persistKeys,
+      keys: state.persistKeys ? state.keys : { anthropic: "", openai: "", gemini: "" },
+    }),
   );
+  if (state.persistKeys) {
+    sessionStorage.removeItem(SESSION_KEYS_KEY);
+  } else {
+    sessionStorage.setItem(SESSION_KEYS_KEY, JSON.stringify(state.keys));
+  }
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -56,6 +79,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setModel: (provider, model) => {
     set({ models: { ...get().models, [provider]: model } });
+    persist(get());
+  },
+  setPersistKeys: (persistKeys) => {
+    set({ persistKeys });
     persist(get());
   },
   openSettings: (settingsOpen) => set({ settingsOpen }),

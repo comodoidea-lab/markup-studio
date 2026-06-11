@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DesignNode } from "../state/types";
 import { useDesignStore } from "../state/designStore";
 import { NodeRenderer } from "./NodeRenderer";
@@ -7,7 +7,66 @@ import { Minus, Plus, Maximize } from "lucide-react";
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
 
-function FrameView({ frame }: { frame: DesignNode }) {
+interface SnapGuides {
+  x: number | null;
+  y: number | null;
+}
+
+/** Snaps a dragged frame's edges to other frames' edges. */
+function snapPosition(
+  rawX: number,
+  rawY: number,
+  width: number,
+  height: number,
+  others: DesignNode[],
+  zoom: number,
+): { x: number; y: number; guides: SnapGuides } {
+  const threshold = 8 / zoom;
+  const xEdges: number[] = [];
+  const yEdges: number[] = [];
+  for (const other of others) {
+    const otherW = Number(other.style.width ?? 390);
+    const otherH = Number(other.style.height ?? 844);
+    xEdges.push(other.x ?? 0, (other.x ?? 0) + otherW);
+    yEdges.push(other.y ?? 0, (other.y ?? 0) + otherH);
+  }
+  let x = rawX;
+  let y = rawY;
+  const guides: SnapGuides = { x: null, y: null };
+  for (const edge of xEdges) {
+    if (Math.abs(rawX - edge) < threshold) {
+      x = edge;
+      guides.x = edge;
+      break;
+    }
+    if (Math.abs(rawX + width - edge) < threshold) {
+      x = edge - width;
+      guides.x = edge;
+      break;
+    }
+  }
+  for (const edge of yEdges) {
+    if (Math.abs(rawY - edge) < threshold) {
+      y = edge;
+      guides.y = edge;
+      break;
+    }
+    if (Math.abs(rawY + height - edge) < threshold) {
+      y = edge - height;
+      guides.y = edge;
+      break;
+    }
+  }
+  return { x: Math.round(x), y: Math.round(y), guides };
+}
+
+function FrameView({
+  frame,
+  onSnapGuides,
+}: {
+  frame: DesignNode;
+  onSnapGuides: (guides: SnapGuides | null) => void;
+}) {
   const select = useDesignStore((state) => state.select);
   const selected = useDesignStore((state) => state.selectedId === frame.id);
   const updateNode = useDesignStore((state) => state.updateNode);
@@ -31,25 +90,29 @@ function FrameView({ frame }: { frame: DesignNode }) {
       const originY = frame.y ?? 0;
       const currentZoom = useDesignStore.getState().viewport.zoom;
 
+      const others = useDesignStore
+        .getState()
+        .doc.frames.filter((other) => other.id !== frame.id);
+      const frameW = Number(frame.style.width ?? 390);
+      const frameH = Number(frame.style.height ?? 844);
+
       const onMove = (move: PointerEvent) => {
-        updateNode(
-          frame.id,
-          {
-            x: Math.round(originX + (move.clientX - startX) / currentZoom),
-            y: Math.round(originY + (move.clientY - startY) / currentZoom),
-          },
-          { history: false },
-        );
+        const rawX = originX + (move.clientX - startX) / currentZoom;
+        const rawY = originY + (move.clientY - startY) / currentZoom;
+        const snapped = snapPosition(rawX, rawY, frameW, frameH, others, currentZoom);
+        onSnapGuides(snapped.guides.x != null || snapped.guides.y != null ? snapped.guides : null);
+        updateNode(frame.id, { x: snapped.x, y: snapped.y }, { history: false });
       };
       const onUp = () => {
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
+        onSnapGuides(null);
         commitTransient();
       };
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
     },
-    [frame.id, frame.x, frame.y, select, updateNode, beginTransient, commitTransient],
+    [frame, select, updateNode, beginTransient, commitTransient, onSnapGuides],
   );
 
   const startResize = useCallback(
@@ -154,6 +217,7 @@ export function CanvasView() {
   const setViewport = useDesignStore((state) => state.setViewport);
   const select = useDesignStore((state) => state.select);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [snapGuides, setSnapGuides] = useState<SnapGuides | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -265,8 +329,20 @@ export function CanvasView() {
         style={{ transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})` }}
       >
         {frames.map((frame) => (
-          <FrameView key={frame.id} frame={frame} />
+          <FrameView key={frame.id} frame={frame} onSnapGuides={setSnapGuides} />
         ))}
+        {snapGuides?.x != null && (
+          <div
+            className="pointer-events-none absolute bg-pink-500"
+            style={{ left: snapGuides.x, top: -100000, width: 1 / viewport.zoom, height: 200000 }}
+          />
+        )}
+        {snapGuides?.y != null && (
+          <div
+            className="pointer-events-none absolute bg-pink-500"
+            style={{ top: snapGuides.y, left: -100000, height: 1 / viewport.zoom, width: 200000 }}
+          />
+        )}
       </div>
 
       <div className="absolute right-4 bottom-4 flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
