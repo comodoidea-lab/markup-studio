@@ -9,7 +9,7 @@ import {
   genId,
   isContainer,
 } from "./nodeUtils";
-import { listDesigns, writeDesign } from "./persistence";
+import { deleteDesign, listDesigns, writeDesign } from "./persistence";
 
 const HISTORY_LIMIT = 80;
 
@@ -32,6 +32,11 @@ interface DesignState {
   loaded: boolean;
 
   load: () => Promise<void>;
+  openBoard: (doc: DesignDocument) => void;
+  newBoard: () => void;
+  saveBoardNow: () => Promise<void>;
+  saveBoardAs: (name: string) => Promise<void>;
+  removeBoard: (id: string) => Promise<void>;
   select: (id: string | null) => void;
   setHover: (id: string | null) => void;
   setViewport: (viewport: Viewport) => void;
@@ -57,13 +62,25 @@ interface DesignState {
   setAiBusy: (busy: boolean) => void;
 }
 
-function newDocument(): DesignDocument {
-  const frame = createFrame("Screen 1", 390, 844, 80, 60);
+function newDocument(name = "Untitled design"): DesignDocument {
   return {
     id: genId("design"),
-    name: "Untitled design",
-    frames: [frame],
+    name,
+    frames: [],
     updatedAt: new Date().toISOString(),
+  };
+}
+
+function resetEditorState(doc: DesignDocument) {
+  return {
+    doc,
+    selectedId: null,
+    hoverId: null,
+    viewport: { x: 0, y: 0, zoom: 0.85 },
+    past: [] as DesignNode[][],
+    future: [] as DesignNode[][],
+    transientSnapshot: null,
+    chat: [] as ChatMessage[],
   };
 }
 
@@ -102,14 +119,65 @@ export const useDesignStore = create<DesignState>((set, get) => ({
       const designs = await listDesigns();
       if (designs.length) {
         const latest = designs.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-        set({ doc: latest, loaded: true });
+        set({ ...resetEditorState(latest), loaded: true });
         return;
       }
     } catch {
       // IndexedDB unavailable — keep the in-memory document.
     }
-    set({ loaded: true });
-    scheduleSave(get().doc);
+    const doc = newDocument();
+    set({ ...resetEditorState(doc), loaded: true });
+    scheduleSave(doc);
+  },
+
+  openBoard: (doc) => {
+    set(resetEditorState(doc));
+    scheduleSave(doc);
+  },
+
+  newBoard: () => {
+    const doc = newDocument();
+    set(resetEditorState(doc));
+    scheduleSave(doc);
+  },
+
+  saveBoardNow: async () => {
+    const doc = { ...get().doc, updatedAt: new Date().toISOString() };
+    set({ doc });
+    await writeDesign(doc);
+  },
+
+  saveBoardAs: async (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const source = get().doc;
+    const doc: DesignDocument = {
+      ...structuredClone(source),
+      id: genId("design"),
+      name: trimmed,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeDesign(doc);
+    set(resetEditorState(doc));
+  },
+
+  removeBoard: async (id) => {
+    await deleteDesign(id);
+    if (get().doc.id !== id) return;
+    try {
+      const remaining = (await listDesigns()).sort((a, b) =>
+        b.updatedAt.localeCompare(a.updatedAt),
+      );
+      if (remaining.length) {
+        set(resetEditorState(remaining[0]));
+        return;
+      }
+    } catch {
+      // fall through to a fresh board
+    }
+    const doc = newDocument();
+    set(resetEditorState(doc));
+    scheduleSave(doc);
   },
 
   select: (id) => set({ selectedId: id }),
