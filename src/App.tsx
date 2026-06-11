@@ -8,7 +8,8 @@ import { ReviewMode } from "./review/ReviewMode";
 import { CanvasView } from "./design/CanvasView";
 import { SettingsModal } from "./ui/SettingsModal";
 import { AgentSetupModal } from "./ui/AgentSetupModal";
-import { Bot, Frame, KeyRound, MessageSquareWarning, PenTool } from "lucide-react";
+import { BoardManagerModal } from "./ui/BoardManagerModal";
+import { Bot, Frame, HardDrive, KeyRound, MessageSquareWarning, PenTool } from "lucide-react";
 
 const EMBED_VIEW = (() => {
   const value = new URLSearchParams(location.search).get("embed");
@@ -39,6 +40,7 @@ export default function App() {
   const openSettings = useSettingsStore((state) => state.openSettings);
   const hasKey = useSettingsStore((state) => Boolean(state.keys[state.provider]));
   const [agentSetupOpen, setAgentSetupOpen] = useState(false);
+  const [boardManagerOpen, setBoardManagerOpen] = useState(false);
 
   useEffect(() => {
     void load();
@@ -96,6 +98,14 @@ export default function App() {
             />
             <button
               className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] whitespace-nowrap text-slate-500 hover:bg-slate-50"
+              title="フレームセット（ボード）の保存・読み込み"
+              onClick={() => setBoardManagerOpen(true)}
+            >
+              <HardDrive size={12} className="shrink-0" />
+              <span className="hidden xl:inline">ボード</span>
+            </button>
+            <button
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] whitespace-nowrap text-slate-500 hover:bg-slate-50"
               title="パネルなしでキャンバスだけを表示するURLをコピーします。レビューモードのLive URLに貼ると、ボードのみを注釈できます"
               onClick={async () => {
                 const url = `${location.origin}${location.pathname}?embed=canvas`;
@@ -136,6 +146,7 @@ export default function App() {
 
       <SettingsModal />
       <AgentSetupModal open={agentSetupOpen} onClose={() => setAgentSetupOpen(false)} />
+      <BoardManagerModal open={boardManagerOpen} onClose={() => setBoardManagerOpen(false)} />
       <Toast />
     </div>
   );
