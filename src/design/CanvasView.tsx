@@ -211,13 +211,15 @@ function FrameView({
   );
 }
 
-export function CanvasView() {
+export function CanvasView({ autoFit = false }: { autoFit?: boolean }) {
   const frames = useDesignStore((state) => state.doc.frames);
+  const loaded = useDesignStore((state) => state.loaded);
   const viewport = useDesignStore((state) => state.viewport);
   const setViewport = useDesignStore((state) => state.setViewport);
   const select = useDesignStore((state) => state.select);
   const containerRef = useRef<HTMLDivElement>(null);
   const [snapGuides, setSnapGuides] = useState<SnapGuides | null>(null);
+  const autoFitDone = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -286,6 +288,12 @@ export function CanvasView() {
     });
   };
 
+  useEffect(() => {
+    if (!autoFit || autoFitDone.current || !loaded || !frames.length) return;
+    autoFitDone.current = true;
+    requestAnimationFrame(() => zoomToFitRef.current());
+  }, [autoFit, loaded, frames.length]);
+
   const zoomToFit = () => {
     const container = containerRef.current;
     if (!container || !frames.length) return;
@@ -311,6 +319,8 @@ export function CanvasView() {
       y: (bounds.height - (maxY - minY) * zoom) / 2 - minY * zoom + 14,
     });
   };
+  const zoomToFitRef = useRef(zoomToFit);
+  zoomToFitRef.current = zoomToFit;
 
   return (
     <div

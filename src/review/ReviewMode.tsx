@@ -418,6 +418,8 @@ export function ReviewMode() {
         </div>
         <p className="text-[11px] text-slate-400">
           iframe表示を禁止しているサイトは開けません。ライブ画面では注釈付き画像のコピーは利用できません。
+          このアプリ自身のデザインボードをレビューするには <code>{location.origin}/?embed=canvas</code>{" "}
+          を指定するとキャンバスのみ表示されます。
         </p>
       </div>
 

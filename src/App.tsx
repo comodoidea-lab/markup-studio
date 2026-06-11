@@ -2,11 +2,17 @@ import { useEffect } from "react";
 import { useAppStore } from "./state/appStore";
 import { useDesignStore } from "./state/designStore";
 import { useSettingsStore } from "./state/settingsStore";
-import { useToastStore } from "./ui/toast";
+import { showToast, useToastStore } from "./ui/toast";
 import { DesignMode } from "./design/DesignMode";
 import { ReviewMode } from "./review/ReviewMode";
+import { CanvasView } from "./design/CanvasView";
 import { SettingsModal } from "./ui/SettingsModal";
-import { KeyRound, MessageSquareWarning, PenTool } from "lucide-react";
+import { Frame, KeyRound, MessageSquareWarning, PenTool } from "lucide-react";
+
+const EMBED_VIEW = (() => {
+  const value = new URLSearchParams(location.search).get("embed");
+  return value === "canvas" || value === "design" || value === "1";
+})();
 
 function Toast() {
   const message = useToastStore((state) => state.message);
@@ -36,6 +42,17 @@ export default function App() {
     void load();
   }, [load]);
 
+  // Canvas-only view for embedding (e.g. reviewing the board itself
+  // through the review mode's Live URL): /?embed=canvas
+  if (EMBED_VIEW) {
+    return (
+      <div className="h-screen bg-slate-100 text-slate-900">
+        <CanvasView autoFit />
+        <Toast />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col bg-slate-50 text-slate-900">
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3">
@@ -64,12 +81,25 @@ export default function App() {
         </div>
 
         {mode === "design" && (
-          <input
-            className="w-48 rounded-md border border-transparent px-2 py-1 text-xs font-medium text-slate-600 hover:border-slate-200 focus:border-blue-400 focus:outline-none"
-            value={docName}
-            onChange={(event) => renameDoc(event.target.value)}
-            aria-label="ドキュメント名"
-          />
+          <>
+            <input
+              className="w-48 rounded-md border border-transparent px-2 py-1 text-xs font-medium text-slate-600 hover:border-slate-200 focus:border-blue-400 focus:outline-none"
+              value={docName}
+              onChange={(event) => renameDoc(event.target.value)}
+              aria-label="ドキュメント名"
+            />
+            <button
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-50"
+              title="パネルなしでキャンバスだけを表示するURLをコピーします。レビューモードのLive URLに貼ると、ボードのみを注釈できます"
+              onClick={async () => {
+                const url = `${location.origin}${location.pathname}?embed=canvas`;
+                await navigator.clipboard.writeText(url).catch(() => {});
+                showToast("キャンバスのみ表示するURLをコピーしました。レビューのLive URLに貼り付けてください", 4000);
+              }}
+            >
+              <Frame size={12} /> キャンバスのみURL
+            </button>
+          </>
         )}
 
         <div className="ml-auto flex items-center gap-2">
