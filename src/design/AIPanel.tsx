@@ -54,12 +54,14 @@ export function AIPanel() {
           <Sparkles size={12} className="text-violet-500" /> AI generate
         </span>
         <button
-          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] text-slate-500 hover:bg-slate-100"
+          className="flex max-w-[55%] items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] text-slate-500 hover:bg-slate-100"
           onClick={() => openSettings(true)}
           title="AI設定"
         >
-          <Settings2 size={11} />
-          {provider} / {model}
+          <Settings2 size={11} className="shrink-0" />
+          <span className="truncate whitespace-nowrap">
+            {provider} / {model}
+          </span>
         </button>
       </div>
 

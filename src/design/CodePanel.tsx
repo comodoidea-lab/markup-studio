@@ -55,7 +55,7 @@ export function CodePanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-1 border-b border-slate-200 px-2 py-1.5">
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 px-2 py-1.5">
         {(
           [
             ["preview", "プレビュー", Eye],
@@ -65,28 +65,28 @@ export function CodePanel() {
         ).map(([id, label, Icon]) => (
           <button
             key={id}
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-medium ${
+            className={`flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11.5px] font-medium whitespace-nowrap ${
               tab === id ? "bg-slate-800 text-white" : "text-slate-500 hover:bg-slate-100"
             }`}
             onClick={() => setTab(id)}
           >
-            <Icon size={12} /> {label}
+            <Icon size={12} className="shrink-0" /> {label}
           </button>
         ))}
-        <span className="ml-auto max-w-28 truncate text-[11px] text-slate-400">
+        <span className="ml-auto hidden max-w-28 truncate text-[11px] text-slate-400 min-[1280px]:inline">
           {frame.name ?? "Frame"}
         </span>
         {tab !== "preview" && (
           <>
             <button
-              className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+              className="ml-auto shrink-0 rounded-md p-1 text-slate-500 hover:bg-slate-100 min-[1280px]:ml-0"
               onClick={() => void copy()}
               title="コードをコピー"
             >
               {copied ? <Check size={13} className="text-green-600" /> : <Copy size={13} />}
             </button>
             <button
-              className="rounded-md p-1 text-slate-500 hover:bg-slate-100"
+              className="shrink-0 rounded-md p-1 text-slate-500 hover:bg-slate-100"
               onClick={download}
               title="ダウンロード"
             >

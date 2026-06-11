@@ -137,14 +137,14 @@ export function DesignMode() {
             ).map(([id, label, Icon]) => (
               <button
                 key={id}
-                className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-2 py-2 text-xs font-semibold ${
+                className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 border-b-2 px-1 py-2 text-xs font-semibold whitespace-nowrap ${
                   rightTab === id
                     ? "border-blue-600 text-blue-700"
                     : "border-transparent text-slate-500 hover:text-slate-700"
                 }`}
                 onClick={() => setRightTab(id)}
               >
-                <Icon size={13} /> {label}
+                <Icon size={13} className="shrink-0" /> {label}
               </button>
             ))}
             <button
