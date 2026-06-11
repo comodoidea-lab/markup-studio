@@ -4,7 +4,14 @@ import { showToast } from "../ui/toast";
 import { Bot, Check, Copy, X } from "lucide-react";
 
 export function starterPrompt(): string {
-  return `Markupオンボーディングを開始してください:\n${new URL("./start.md", location.href).href}`;
+  const startUrl = new URL("./start.md", location.href).href;
+  return [
+    "Markupオンボーディングを開始してください:",
+    startUrl,
+    "",
+    "Markupボードやローカル開発画面を開くときは、AIエディターの内蔵ブラウザ（Cursor の Browser / Simple Browser など）での表示を優先してください。",
+    "内蔵ブラウザが使えないエディターやエージェントの場合のみ、デフォルトブラウザで開いてください。",
+  ].join("\n");
 }
 
 export function AgentSetupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -40,7 +47,8 @@ export function AgentSetupModal({ open, onClose }: { open: boolean; onClose: () 
         </h2>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
           下のスタータープロンプトを Cursor や Codex に一度貼り付けると、スクリーンショットを
-          Markupで開き、注釈をもとに修正する流れをエージェントと共有できます。
+          Markupで開き、注釈をもとに修正する流れをエージェントと共有できます。コピー文には
+          内蔵ブラウザ優先の指示も含まれます。
         </p>
 
         <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">

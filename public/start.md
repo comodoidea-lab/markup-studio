@@ -5,9 +5,18 @@ Markup is a visual UI feedback board. Use the same language as the user.
 Use the strongest visual tools available to you. Do not assume that reading the generated
 prompt means you have inspected the original UI.
 
+## Browser preference
+
+Open Markup boards and local development URLs in the AI editor's integrated browser first
+(Cursor Browser tab, IDE embedded preview, etc.) so you can use element inspection,
+screenshots, and console tools alongside the agent.
+
+If the editor or agent has no integrated browser, open the same URL in the system default
+browser instead.
+
 Review in this order:
 
-1. Open the current Markup board with your integrated browser.
+1. Open the current Markup board with your integrated browser (default browser only as a fallback).
 2. Use browser screenshots, image analysis, element inspection, annotations, and console tools
    when available to inspect both the original UI and its visible annotations.
 3. If the board cannot be inspected, ask for the annotated PNG.
