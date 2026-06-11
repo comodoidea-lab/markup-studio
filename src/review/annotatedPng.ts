@@ -96,21 +96,41 @@ function drawAnnotations(
       context.fillStyle = accent;
       context.fill();
     } else if (annotation.kind === "text") {
-      const label = `${index + 1} · ${annotation.text || "テキスト"}`;
-      const fontSize = Math.max(20, scale * 0.025);
-      const paddingX = fontSize * 0.65;
-      const paddingY = fontSize * 0.42;
-      context.font = `800 ${fontSize}px Arial, sans-serif`;
-      const labelWidth = context.measureText(label).width + paddingX * 2;
-      const labelHeight = fontSize + paddingY * 2;
+      const areaWidth = ((annotation.width ?? 30) / 100) * width;
+      const areaHeight = ((annotation.height ?? 10) / 100) * height;
+      const padding = Math.max(8, scale * 0.01);
+      const fontSize = Math.max(14, scale * 0.018);
+      const lineHeight = fontSize * 1.35;
+
+      context.strokeStyle = accent;
+      context.lineWidth = Math.max(2, scale * 0.0028);
+      context.strokeRect(x, y, areaWidth, areaHeight);
+
+      const body = annotation.text || "テキスト";
       context.fillStyle = accent;
-      context.beginPath();
-      context.roundRect(x, y, labelWidth, labelHeight, fontSize * 0.3);
-      context.fill();
-      context.fillStyle = "#ffffff";
-      context.textAlign = "left";
-      context.textBaseline = "middle";
-      context.fillText(label, x + paddingX, y + labelHeight / 2);
+      context.font = `700 ${fontSize}px Arial, sans-serif`;
+      const maxWidth = areaWidth - padding * 2;
+      const lines: string[] = [];
+      let line = "";
+      for (const char of body) {
+        const test = line + char;
+        if (context.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = char;
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      let cursorY = y + padding + fontSize;
+      const maxY = y + areaHeight - padding;
+      for (const textLine of lines) {
+        if (cursorY > maxY) break;
+        context.fillText(textLine, x + padding, cursorY);
+        cursorY += lineHeight;
+      }
+      context.strokeStyle = accent;
+      context.fillStyle = "rgba(255, 90, 54, 0.10)";
       return;
     } else {
       context.beginPath();

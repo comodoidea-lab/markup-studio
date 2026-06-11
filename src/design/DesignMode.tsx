@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useDesignStore } from "../state/designStore";
 import { useAppStore } from "../state/appStore";
 import { CanvasView } from "./CanvasView";
@@ -49,19 +49,28 @@ function EmptyBoardGuide({ onStartAI }: { onStartAI: () => void }) {
             ここは無限ボード。生成したフレームを並べて、AIと一緒にUIを練り上げます。
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="grid w-full max-w-xl grid-cols-1 justify-items-center gap-3 sm:grid-cols-[11rem_auto_11rem_auto_11rem] sm:items-stretch sm:justify-center">
           {steps.map(([step, icon, title, body], index) => (
-            <div key={step} className="flex items-center gap-3">
-              {index > 0 && <span className="hidden text-slate-300 sm:inline">→</span>}
-              <div className="w-44 rounded-xl border border-[#d9d9d0] bg-white p-3 text-left shadow-sm">
+            <Fragment key={step}>
+              {index > 0 && (
+                <span
+                  aria-hidden
+                  className="hidden place-self-center text-lg leading-none text-slate-300 sm:block"
+                >
+                  →
+                </span>
+              )}
+              <div className="flex h-full w-44 flex-col rounded-xl border border-[#d9d9d0] bg-white p-3 text-left shadow-sm sm:w-full">
                 <span className="text-[10px] font-bold text-slate-400">{step}</span>
-                <div className="my-1 flex h-8 w-8 items-center justify-center rounded-lg bg-[#fff0eb] text-[#ff5a36]">
+                <div className="my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#fff0eb] text-[#ff5a36]">
                   {icon}
                 </div>
                 <p className="text-xs font-bold text-slate-700">{title}</p>
-                <p className="mt-0.5 text-[10.5px] leading-snug text-slate-500">{body}</p>
+                <p className="mt-0.5 min-h-[2.5rem] flex-1 text-[10.5px] leading-snug text-slate-500">
+                  {body}
+                </p>
               </div>
-            </div>
+            </Fragment>
           ))}
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
