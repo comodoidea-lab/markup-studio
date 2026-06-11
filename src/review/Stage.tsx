@@ -4,7 +4,7 @@ import { useReviewStore } from "./reviewStore";
 import { showToast } from "../ui/toast";
 
 interface DrawingState {
-  kind: "rect" | "arrow" | "color";
+  kind: "rect" | "arrow" | "color" | "text";
   startX: number;
   startY: number;
   x: number;
@@ -54,19 +54,21 @@ function AnnotationShapes({
     }
 
     if (a.kind === "text") {
-      const label = `${isDrawing ? "" : `${index + 1} · `}${a.text || "テキスト"}`;
-      const labelWidth = Math.min(42, Math.max(12, label.length * 1.45 + 3));
+      if (!isDrawing) return null;
       return (
         <g key={key}>
-          <rect x={a.x} y={a.y} width={labelWidth} height={5} rx={1} fill="#ff5a36" />
-          <text
-            x={a.x + 1.5}
-            y={a.y + 3.4}
-            fill="#ffffff"
-            style={{ fontSize: "2.4px", fontWeight: 800 }}
-          >
-            {label}
-          </text>
+          <rect
+            x={a.x}
+            y={a.y}
+            width={a.width ?? 0}
+            height={a.height ?? 0}
+            rx={0.7}
+            fill="rgba(255,255,255,0.85)"
+            stroke="#ff5a36"
+            strokeDasharray="1.4 0.9"
+            style={{ strokeWidth: 2 }}
+            vectorEffect="non-scaling-stroke"
+          />
         </g>
       );
     }
@@ -143,8 +145,185 @@ function AnnotationShapes({
   return (
     <>
       {annotations.map((annotation, index) => renderOne(annotation, index, false))}
-      {drawing && renderOne({ ...drawing, id: -1, type: "layout", text: "" }, 0, true)}
+      {drawing &&
+        renderOne(
+          {
+            ...drawing,
+            id: -1,
+            type: "copy",
+            text: "",
+            kind: drawing.kind,
+          } as Annotation,
+          0,
+          true,
+        )}
     </>
+  );
+}
+
+type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+const MIN_TEXT_W = 5;
+const MIN_TEXT_H = 4;
+
+const RESIZE_HANDLES: { id: ResizeHandle; className: string; cursor: string }[] = [
+  { id: "nw", className: "top-0 left-0 -translate-x-1/2 -translate-y-1/2", cursor: "nwse-resize" },
+  { id: "n", className: "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2", cursor: "ns-resize" },
+  { id: "ne", className: "top-0 right-0 translate-x-1/2 -translate-y-1/2", cursor: "nesw-resize" },
+  { id: "e", className: "top-1/2 right-0 translate-x-1/2 -translate-y-1/2", cursor: "ew-resize" },
+  { id: "se", className: "right-0 bottom-0 translate-x-1/2 translate-y-1/2", cursor: "nwse-resize" },
+  { id: "s", className: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2", cursor: "ns-resize" },
+  { id: "sw", className: "bottom-0 left-0 -translate-x-1/2 translate-y-1/2", cursor: "nesw-resize" },
+  { id: "w", className: "top-1/2 left-0 -translate-x-1/2 -translate-y-1/2", cursor: "ew-resize" },
+];
+
+function percentFromClient(stage: DOMRect, clientX: number, clientY: number) {
+  return {
+    x: Math.max(0, Math.min(100, ((clientX - stage.left) / stage.width) * 100)),
+    y: Math.max(0, Math.min(100, ((clientY - stage.top) / stage.height) * 100)),
+  };
+}
+
+function clampTextBox(box: { x: number; y: number; width: number; height: number }) {
+  const width = Math.max(MIN_TEXT_W, Math.min(100, box.width));
+  const height = Math.max(MIN_TEXT_H, Math.min(100, box.height));
+  const x = Math.max(0, Math.min(100 - width, box.x));
+  const y = Math.max(0, Math.min(100 - height, box.y));
+  return { x, y, width, height };
+}
+
+function resizeTextBox(
+  origin: { x: number; y: number; width: number; height: number },
+  handle: ResizeHandle,
+  point: { x: number; y: number },
+) {
+  const right = origin.x + origin.width;
+  const bottom = origin.y + origin.height;
+  let x = origin.x;
+  let y = origin.y;
+  let width = origin.width;
+  let height = origin.height;
+
+  if (handle.includes("w")) {
+    x = point.x;
+    width = right - point.x;
+  }
+  if (handle.includes("e")) {
+    width = point.x - origin.x;
+  }
+  if (handle.includes("n")) {
+    y = point.y;
+    height = bottom - point.y;
+  }
+  if (handle.includes("s")) {
+    height = point.y - origin.y;
+  }
+
+  return clampTextBox({ x, y, width, height });
+}
+
+function TextBoxItem({
+  annotation,
+  stageRef,
+}: {
+  annotation: Annotation;
+  stageRef: React.RefObject<HTMLDivElement>;
+}) {
+  const updateAnnotation = useReviewStore((state) => state.updateAnnotation);
+
+  const startDrag = (event: React.PointerEvent) => {
+    event.stopPropagation();
+    const stage = stageRef.current?.getBoundingClientRect();
+    if (!stage) return;
+    const startPoint = percentFromClient(stage, event.clientX, event.clientY);
+    const origin = {
+      x: annotation.x,
+      y: annotation.y,
+      width: annotation.width ?? 30,
+      height: annotation.height ?? 10,
+    };
+
+    const onMove = (move: PointerEvent) => {
+      const point = percentFromClient(stage, move.clientX, move.clientY);
+      const next = clampTextBox({
+        ...origin,
+        x: origin.x + (point.x - startPoint.x),
+        y: origin.y + (point.y - startPoint.y),
+      });
+      updateAnnotation(annotation.id, next);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const startResize = (handle: ResizeHandle, event: React.PointerEvent) => {
+    event.stopPropagation();
+    const stage = stageRef.current?.getBoundingClientRect();
+    if (!stage) return;
+    const origin = {
+      x: annotation.x,
+      y: annotation.y,
+      width: annotation.width ?? 30,
+      height: annotation.height ?? 10,
+    };
+
+    const onMove = (move: PointerEvent) => {
+      const point = percentFromClient(stage, move.clientX, move.clientY);
+      updateAnnotation(annotation.id, resizeTextBox(origin, handle, point));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  return (
+    <div
+      className="group/textbox pointer-events-auto absolute rounded-sm border border-[#ff5a36]/80 bg-transparent"
+      style={{
+        left: `${annotation.x}%`,
+        top: `${annotation.y}%`,
+        width: `${annotation.width ?? 30}%`,
+        height: `${annotation.height ?? 10}%`,
+      }}
+      onPointerDown={startDrag}
+    >
+      <p className="pointer-events-none h-full overflow-hidden p-1.5 text-[11px] leading-snug font-semibold whitespace-pre-wrap text-[#ff5a36] select-none">
+        {annotation.text || "テキスト"}
+      </p>
+      {RESIZE_HANDLES.map((handle) => (
+        <span
+          key={handle.id}
+          className={`absolute z-10 h-2.5 w-2.5 rounded-sm border-2 border-[#ff5a36] bg-white opacity-0 shadow-sm transition-opacity group-hover/textbox:opacity-100 ${handle.className}`}
+          style={{ cursor: handle.cursor }}
+          onPointerDown={(event) => startResize(handle.id, event)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TextBoxOverlays({
+  annotations,
+  stageRef,
+}: {
+  annotations: Annotation[];
+  stageRef: React.RefObject<HTMLDivElement>;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[5]">
+      {annotations
+        .filter((annotation) => annotation.kind === "text")
+        .map((annotation) => (
+          <TextBoxItem key={annotation.id} annotation={annotation} stageRef={stageRef} />
+        ))}
+    </div>
   );
 }
 
@@ -226,8 +405,19 @@ export function Stage({ onAnnotationAdded }: { onAnnotationAdded: () => void }) 
       return;
     }
     if (activeTool === "text") {
-      addAnnotation({ kind: "text", x: point.x, y: point.y, type: "copy", text: "" });
-      onAnnotationAdded();
+      setDrawing({
+        kind: "text",
+        startX: point.x,
+        startY: point.y,
+        x: point.x,
+        y: point.y,
+        endX: point.x,
+        endY: point.y,
+        width: 0,
+        height: 0,
+        color: selectedColor,
+      });
+      (event.target as HTMLElement).setPointerCapture?.(event.pointerId);
       return;
     }
     setDrawing({
@@ -274,6 +464,27 @@ export function Stage({ onAnnotationAdded }: { onAnnotationAdded: () => void }) 
         text: "",
       });
       onAnnotationAdded();
+    } else if (drawing.kind === "text") {
+      let x = drawing.x;
+      let y = drawing.y;
+      let width = drawing.width;
+      let height = drawing.height;
+      if (width < 2 || height < 2) {
+        x = drawing.startX;
+        y = drawing.startY;
+        width = 30;
+        height = 10;
+      }
+      addAnnotation({
+        kind: "text",
+        x,
+        y,
+        width,
+        height,
+        type: "copy",
+        text: "",
+      });
+      onAnnotationAdded();
     } else if (
       ["rect", "color"].includes(drawing.kind) &&
       drawing.width > 1 &&
@@ -310,7 +521,7 @@ export function Stage({ onAnnotationAdded }: { onAnnotationAdded: () => void }) 
   return (
     <div
       ref={stageRef}
-      className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+      className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#d9d9d0] bg-[#f4f3ed] shadow-sm"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -336,9 +547,9 @@ export function Stage({ onAnnotationAdded }: { onAnnotationAdded: () => void }) 
       )}
 
       {sourceType === "demo" && (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-gradient-to-b from-slate-50 to-slate-100 px-8 select-none">
+        <div className="canvas-grid-bg flex h-full w-full flex-col items-center justify-center gap-5 px-8 select-none">
           <div className="text-center">
-            <p className="text-[11px] font-bold tracking-widest text-orange-500 uppercase">
+            <p className="text-[11px] font-bold tracking-widest text-[#ff5a36] uppercase">
               Markup quick guide
             </p>
             <h2 className="mt-1 text-2xl leading-snug font-bold text-slate-800">
@@ -358,9 +569,9 @@ export function Stage({ onAnnotationAdded }: { onAnnotationAdded: () => void }) 
             ].map(([step, icon, title, body], index) => (
               <div key={step} className="flex items-center gap-3">
                 {index > 0 && <span className="text-slate-300">→</span>}
-                <div className="w-40 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="w-40 rounded-xl border border-[#d9d9d0] bg-white p-3 shadow-sm">
                   <span className="text-[10px] font-bold text-slate-400">{step}</span>
-                  <div className="my-1 flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-sm font-bold text-orange-600">
+                  <div className="my-1 flex h-8 w-8 items-center justify-center rounded-lg bg-[#fff0eb] text-sm font-bold text-[#ff5a36]">
                     {icon}
                   </div>
                   <p className="text-xs font-bold text-slate-700">{title}</p>
@@ -372,8 +583,10 @@ export function Stage({ onAnnotationAdded }: { onAnnotationAdded: () => void }) 
         </div>
       )}
 
+      <TextBoxOverlays annotations={annotations} stageRef={stageRef} />
+
       <svg
-        className="pointer-events-none absolute inset-0 h-full w-full"
+        className="pointer-events-none absolute inset-0 z-[4] h-full w-full"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
       >

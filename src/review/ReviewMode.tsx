@@ -42,7 +42,10 @@ function InstructionCards({ listRef }: { listRef: React.RefObject<HTMLDivElement
   const removeAnnotation = useReviewStore((state) => state.removeAnnotation);
 
   const coordsLabel = (a: (typeof annotations)[number]) => {
-    if (a.kind === "pin" || a.kind === "text") {
+    if (a.kind === "text") {
+      return `text-box · x ${a.x.toFixed(1)}% · y ${a.y.toFixed(1)}% · w ${(a.width ?? 30).toFixed(1)}% · h ${(a.height ?? 10).toFixed(1)}%`;
+    }
+    if (a.kind === "pin") {
       return `pin · x ${a.x.toFixed(1)}% · y ${a.y.toFixed(1)}%`;
     }
     if (a.kind === "arrow") {
@@ -97,7 +100,9 @@ function InstructionCards({ listRef }: { listRef: React.RefObject<HTMLDivElement
             placeholder={
               annotation.kind === "color"
                 ? "例：このカードの背景色を変更する"
-                : "例：見出しを左揃えにして、上下の余白を広げる"
+                : annotation.kind === "text"
+                  ? "例：このテキストボックスの内容どおり修正する"
+                  : "例：見出しを左揃えにして、上下の余白を広げる"
             }
             value={annotation.text}
             onChange={(event) => updateAnnotation(annotation.id, { text: event.target.value })}

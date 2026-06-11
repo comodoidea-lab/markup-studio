@@ -35,7 +35,15 @@ export function promptData(annotations: Annotation[], context: PromptContext) {
       id: index + 1,
       category: annotation.type,
       categoryLabel: TYPE_LABELS[annotation.type],
-      target: ["rect", "color"].includes(annotation.kind)
+      target: annotation.kind === "text"
+        ? {
+            kind: "text-box",
+            x: annotation.x,
+            y: annotation.y,
+            width: annotation.width ?? 30,
+            height: annotation.height ?? 10,
+          }
+        : ["rect", "color"].includes(annotation.kind)
         ? {
             kind: annotation.kind === "color" ? "color-area" : "area",
             x: annotation.x,
@@ -86,6 +94,8 @@ export function markdownPrompt(data: PromptJson): string {
     let label: string;
     if (target.kind === "area") {
       label = `範囲 x:${Number(target.x).toFixed(1)}%, y:${Number(target.y).toFixed(1)}%, w:${Number(target.width).toFixed(1)}%, h:${Number(target.height).toFixed(1)}%`;
+    } else if (target.kind === "text-box") {
+      label = `テキストボックス x:${Number(target.x).toFixed(1)}%, y:${Number(target.y).toFixed(1)}%, w:${Number(target.width).toFixed(1)}%, h:${Number(target.height).toFixed(1)}%`;
     } else if (target.kind === "color-area") {
       label = `色変更範囲 x:${Number(target.x).toFixed(1)}%, y:${Number(target.y).toFixed(1)}%, w:${Number(target.width).toFixed(1)}%, h:${Number(target.height).toFixed(1)}% → ${String(target.desiredColor).toUpperCase()}`;
     } else if (target.kind === "arrow") {
