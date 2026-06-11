@@ -9,7 +9,7 @@ export function starterPrompt(): string {
     "Markupオンボーディングを開始してください:",
     startUrl,
     "",
-    "Markupボードやローカル開発画面を開くときは、AIエディターの内蔵ブラウザ（Cursor の Browser / Simple Browser など）での表示を優先してください。",
+    "Markupボードやローカル開発画面を開くときは、AIエディターの内蔵ブラウザでの表示を優先してください。",
     "内蔵ブラウザが使えないエディターやエージェントの場合のみ、デフォルトブラウザで開いてください。",
   ].join("\n");
 }

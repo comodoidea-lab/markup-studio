@@ -8,7 +8,7 @@ prompt means you have inspected the original UI.
 ## Browser preference
 
 Open Markup boards and local development URLs in the AI editor's integrated browser first
-(Cursor Browser tab, IDE embedded preview, etc.) so you can use element inspection,
+(IDE embedded preview, integrated browser panel, etc.) so you can use element inspection,
 screenshots, and console tools alongside the agent.
 
 If the editor or agent has no integrated browser, open the same URL in the system default
