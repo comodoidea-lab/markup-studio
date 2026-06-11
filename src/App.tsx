@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "./state/appStore";
 import { useDesignStore } from "./state/designStore";
 import { useSettingsStore } from "./state/settingsStore";
@@ -7,7 +7,8 @@ import { DesignMode } from "./design/DesignMode";
 import { ReviewMode } from "./review/ReviewMode";
 import { CanvasView } from "./design/CanvasView";
 import { SettingsModal } from "./ui/SettingsModal";
-import { Frame, KeyRound, MessageSquareWarning, PenTool } from "lucide-react";
+import { AgentSetupModal } from "./ui/AgentSetupModal";
+import { Bot, Frame, KeyRound, MessageSquareWarning, PenTool } from "lucide-react";
 
 const EMBED_VIEW = (() => {
   const value = new URLSearchParams(location.search).get("embed");
@@ -37,6 +38,7 @@ export default function App() {
   const load = useDesignStore((state) => state.load);
   const openSettings = useSettingsStore((state) => state.openSettings);
   const hasKey = useSettingsStore((state) => Boolean(state.keys[state.provider]));
+  const [agentSetupOpen, setAgentSetupOpen] = useState(false);
 
   useEffect(() => {
     void load();
@@ -104,6 +106,13 @@ export default function App() {
 
         <div className="ml-auto flex items-center gap-2">
           <button
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            title="CursorやCodexと連携するスタータープロンプトを表示"
+            onClick={() => setAgentSetupOpen(true)}
+          >
+            <Bot size={13} /> エージェント連携
+          </button>
+          <button
             className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
               hasKey
                 ? "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -120,6 +129,7 @@ export default function App() {
       <main className="min-h-0 flex-1">{mode === "design" ? <DesignMode /> : <ReviewMode />}</main>
 
       <SettingsModal />
+      <AgentSetupModal open={agentSetupOpen} onClose={() => setAgentSetupOpen(false)} />
       <Toast />
     </div>
   );
