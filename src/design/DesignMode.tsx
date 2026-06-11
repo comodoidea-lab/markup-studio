@@ -41,7 +41,21 @@ export function DesignMode() {
   const canUndo = useDesignStore((state) => state.past.length > 0);
   const canRedo = useDesignStore((state) => state.future.length > 0);
 
-  // Selecting a node in a narrow viewport opens the inspector on demand instead.
+  // Auto collapse/expand the panels when the window crosses the narrow threshold,
+  // without fighting manual toggles during small resizes.
+  useEffect(() => {
+    let wasNarrow = NARROW();
+    const onResize = () => {
+      const narrow = NARROW();
+      if (narrow === wasNarrow) return;
+      wasNarrow = narrow;
+      setLeftOpen(!narrow);
+      setRightOpen(!narrow);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const meta = event.metaKey || event.ctrlKey;
@@ -67,7 +81,7 @@ export function DesignMode() {
   return (
     <div className="flex h-full min-h-0">
       {leftOpen && (
-        <aside className="w-56 shrink-0 border-r border-[#d9d9d0] bg-[#fbfaf5]">
+        <aside className="w-[clamp(168px,17vw,224px)] shrink-0 border-r border-[#d9d9d0] bg-[#fbfaf5]">
           <LayersPanel />
         </aside>
       )}
@@ -112,7 +126,7 @@ export function DesignMode() {
       </div>
 
       {rightOpen && (
-        <aside className="flex w-72 shrink-0 flex-col border-l border-[#d9d9d0] bg-[#fbfaf5] xl:w-80">
+        <aside className="flex w-[clamp(248px,24vw,320px)] shrink-0 flex-col border-l border-[#d9d9d0] bg-[#fbfaf5]">
           <div className="flex items-center border-b border-slate-200">
             {(
               [

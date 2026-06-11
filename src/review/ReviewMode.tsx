@@ -425,7 +425,7 @@ export function ReviewMode() {
         </p>
       </div>
 
-      <aside className="flex w-full shrink-0 flex-col gap-3 pb-4 lg:w-[340px] lg:pb-0">
+      <aside className="flex w-full shrink-0 flex-col gap-3 pb-4 lg:w-[clamp(280px,28vw,340px)] lg:pb-0">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
