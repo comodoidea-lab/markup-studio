@@ -17,6 +17,7 @@ const sidebarCount = document.querySelector("#sidebarCount");
 const undoButton = document.querySelector("#undoButton");
 const clearButton = document.querySelector("#clearButton");
 const copyImageButton = document.querySelector("#copyImage");
+const downloadImageButton = document.querySelector("#downloadImage");
 const toolbarColor = document.querySelector("#toolbarColor");
 const toolbarColorSwatch = document.querySelector("#toolbarColorSwatch");
 const guideModal = document.querySelector("#guideModal");
@@ -532,6 +533,10 @@ function updateMeta() {
     currentSourceType === "live"
       ? "ライブ画面は画像化できません。スクリーンショットを読み込んでください"
       : "注釈付き画像をコピー";
+  downloadImageButton.title =
+    currentSourceType === "live"
+      ? "ライブ画面は画像化できません。スクリーンショットを読み込んでください"
+      : "注釈付きPNGを保存";
 }
 
 function persist() {
@@ -1139,6 +1144,22 @@ async function copyAnnotatedImage() {
   }
 }
 
+async function downloadAnnotatedImage() {
+  if (!annotations.length) {
+    showToast("先に注釈を追加してください");
+    return;
+  }
+
+  try {
+    const canvas = createAnnotatedCanvas();
+    const pngBlob = await canvasToPngBlob(canvas);
+    downloadPng(pngBlob);
+    showToast("注釈付きPNGを保存しました。Codexの＋から添付できます", 4000);
+  } catch (error) {
+    showToast(error.message || "注釈付き画像を生成できませんでした", 4000);
+  }
+}
+
 function showToast(message, duration = 1800) {
   toast.textContent = message;
   toast.classList.add("show");
@@ -1351,6 +1372,7 @@ document.querySelector("#copyPrompt").addEventListener("click", copyPrompt);
 document.querySelector("#copyPromptTop").addEventListener("click", copyPrompt);
 insertAgentButton.addEventListener("click", insertIntoAgent);
 copyImageButton.addEventListener("click", copyAnnotatedImage);
+downloadImageButton.addEventListener("click", downloadAnnotatedImage);
 starterPrompt.textContent = getStarterPrompt();
 copyStarterPromptButton.addEventListener("click", copyStarterPrompt);
 openGuideButton.addEventListener("click", openGuide);

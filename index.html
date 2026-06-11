@@ -76,6 +76,9 @@
               <button class="image-copy-button" id="copyImage" title="注釈付き画像をコピー">
                 画像をコピー
               </button>
+              <button class="image-copy-button" id="downloadImage" title="注釈付きPNGを保存">
+                PNG保存
+              </button>
               <button class="icon-button" id="undoButton" title="ひとつ戻す" disabled>↶</button>
               <button class="icon-button" id="clearButton" title="すべて消去" disabled>⌫</button>
             </div>
@@ -245,7 +248,7 @@
         <ol class="guide-steps">
           <li><span>01</span>画像を読み込むか、WebアプリのURLを開く</li>
           <li><span>02</span>範囲・矢印・文字・色で修正内容を示す</li>
-          <li><span>03</span>「画像をコピー」と「Copy AI prompt」を使う</li>
+          <li><span>03</span>画像をコピー、またはPNG保存してAIプロンプトと一緒に渡す</li>
           <li><span>04</span>エージェントへ戻り「Markupの指示どおり修正して」と伝える</li>
         </ol>
         <a class="guide-skill-link" href="./skill/SKILL.md" target="_blank" rel="noreferrer">
@@ -281,6 +284,6 @@
       </article>
     </template>
 
-    <script src="./app.js?v=6"></script>
+    <script src="./app.js?v=7"></script>
   </body>
 </html>
