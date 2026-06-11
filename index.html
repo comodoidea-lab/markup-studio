@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16.png" />
     <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
     <link rel="manifest" href="./site.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=6" />
+    <link rel="stylesheet" href="./styles.css?v=8" />
   </head>
   <body>
     <header class="topbar">
@@ -93,10 +93,30 @@
                 allow="clipboard-read; clipboard-write"
               ></iframe>
               <div class="live-mode-bar" id="liveModeBar" hidden>
-                <span id="liveModeStatus">注釈モード</span>
-                <div class="live-mode-actions" role="group" aria-label="Webアプリの操作モード">
-                  <button type="button" data-live-mode="interact">Webアプリを操作</button>
-                  <button class="active" type="button" data-live-mode="annotate">注釈を描く</button>
+                <div class="live-session-row">
+                  <span class="live-session-label" id="liveModeStatus">注釈モード</span>
+                  <div class="live-mode-actions" role="group" aria-label="Webアプリの操作モード">
+                    <button type="button" data-live-mode="interact">Webアプリを操作</button>
+                    <button class="active" type="button" data-live-mode="annotate">注釈を描く</button>
+                  </div>
+                </div>
+                <div class="live-session-row live-route-row">
+                  <label for="livePathInput">Path</label>
+                  <input
+                    id="livePathInput"
+                    type="text"
+                    value="/"
+                    aria-label="現在の画面パス"
+                    spellcheck="false"
+                  />
+                  <button class="live-route-apply" id="applyLivePath" type="button">移動</button>
+                  <button class="live-reload" id="reloadLiveFrame" type="button" title="画面を再読み込み">
+                    ↻
+                  </button>
+                  <label class="live-auto-refresh">
+                    <input id="autoReloadLive" type="checkbox" />
+                    <span>10秒ごと</span>
+                  </label>
                 </div>
               </div>
               <div class="demo-page" id="demoPage">
@@ -284,6 +304,6 @@
       </article>
     </template>
 
-    <script src="./app.js?v=7"></script>
+    <script src="./app.js?v=8"></script>
   </body>
 </html>

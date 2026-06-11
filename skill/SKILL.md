@@ -1,16 +1,17 @@
 ---
 name: markup
-description: Use Markup to review app or website screenshots visually before implementing UI changes. Trigger when the user asks to open a screenshot in Markup, annotate UI feedback, review a screen graphically, or prepare a visual review board for an AI coding agent.
+description: Use Markup to review screenshots or live local web apps visually before implementing UI changes. Trigger when the user asks to open a screenshot in Markup, annotate UI feedback, review a screen graphically, inspect a Markup board, or iterate on a development server with visual feedback.
 ---
 
 # Markup
 
-<!-- markup-skill-version: 0.1.0 -->
+<!-- markup-skill-version: 0.2.0 -->
 
-Use Markup for this loop:
+Use Markup for these loops:
 
 ```text
 screenshot -> user marks feedback -> copy annotated image and prompt -> confirm -> implement
+local dev URL -> operate app -> mark feedback -> implement -> HMR/reload -> verify same path
 ```
 
 ## Prepare the board
@@ -34,11 +35,14 @@ paste it onto the board with `Cmd+V` or `Ctrl+V`.
 
 ## Review
 
-1. Let the user add ranges, pins, arrows, text, and color changes.
-2. Ask them to use `画像をコピー` and `Copy AI prompt`.
-3. Read the returned image and prompt.
-4. Confirm the visible requested changes before editing code.
-5. Implement and verify the requested UI changes.
+1. Open the current Markup board with the available integrated browser.
+2. Use screenshots, image analysis, element inspection, annotations, and console tools when
+   available. Reading the generated prompt alone is not visual confirmation.
+3. Let the user add ranges, pins, arrows, text, and color changes.
+4. If the board cannot be inspected, ask for the annotated PNG.
+5. Read the generated prompt and confirm it against the visible annotations.
+6. Implement and verify the requested UI changes.
+7. For live development reviews, return to the same saved screen path after HMR or reload.
 
 ## Boundaries
 

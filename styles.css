@@ -493,10 +493,10 @@ button {
   top: 12px;
   left: 50%;
   z-index: 8;
-  padding: 5px 5px 5px 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  width: min(640px, calc(100% - 24px));
+  padding: 5px;
+  display: grid;
+  gap: 4px;
   color: var(--muted);
   background: rgba(251, 250, 245, 0.94);
   border: 1px solid var(--line);
@@ -506,6 +506,17 @@ button {
   backdrop-filter: blur(8px);
   font-size: 9px;
   font-weight: 700;
+}
+
+.live-session-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-session-label {
+  min-width: 60px;
+  padding-left: 5px;
 }
 
 .live-mode-bar[hidden] {
@@ -531,6 +542,76 @@ button {
 .live-mode-actions button.active {
   color: var(--white);
   background: var(--accent);
+}
+
+.live-route-row {
+  padding: 4px;
+  background: #eeede7;
+  border: 1px solid #e0dfd7;
+}
+
+.live-route-row > label:first-child {
+  color: var(--accent);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.live-route-row input[type="text"] {
+  min-width: 0;
+  height: 27px;
+  flex: 1;
+  padding: 0 8px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  outline: 0;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+}
+
+.live-route-row input[type="text"]:focus {
+  border-color: #ffab96;
+}
+
+.live-route-apply,
+.live-reload {
+  height: 27px;
+  padding: 0 9px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.live-reload {
+  width: 29px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.live-route-apply:hover,
+.live-reload:hover {
+  color: var(--accent);
+  border-color: #ffab96;
+}
+
+.live-auto-refresh {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.live-auto-refresh input {
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .annotation-shape {

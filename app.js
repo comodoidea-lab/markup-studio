@@ -9,6 +9,10 @@ const liveModeBar = document.querySelector("#liveModeBar");
 const liveModeStatus = document.querySelector("#liveModeStatus");
 const liveUrlForm = document.querySelector("#liveUrlForm");
 const liveUrlInput = document.querySelector("#liveUrlInput");
+const livePathInput = document.querySelector("#livePathInput");
+const applyLivePathButton = document.querySelector("#applyLivePath");
+const reloadLiveFrameButton = document.querySelector("#reloadLiveFrame");
+const autoReloadLive = document.querySelector("#autoReloadLive");
 const demoPage = document.querySelector("#demoPage");
 const dropZone = document.querySelector("#dropZone");
 const promptPreview = document.querySelector("#promptPreview");
@@ -38,7 +42,11 @@ let currentBoardId = boardIdFromLocation() || "default";
 let currentBoardTitle = "UI Review";
 let currentSourceType = "demo";
 let currentLiveUrl = "";
+let currentLiveOrigin = "";
+let currentLivePath = "/";
 let liveInteractionEnabled = false;
+let liveAutoReloadEnabled = false;
+let liveAutoReloadTimer = null;
 let saveTimer = null;
 
 const MARKUP_DB_NAME = "markup-agent-boards";
@@ -153,6 +161,9 @@ function scheduleBoardSave() {
         sourceType: currentSourceType,
         image: currentSourceType === "image" ? sourceImage.src : null,
         liveUrl: currentSourceType === "live" ? currentLiveUrl : null,
+        liveOrigin: currentSourceType === "live" ? currentLiveOrigin : null,
+        livePath: currentSourceType === "live" ? currentLivePath : null,
+        liveAutoReload: currentSourceType === "live" ? liveAutoReloadEnabled : false,
         annotations,
         updatedAt: new Date().toISOString(),
       });
@@ -170,8 +181,11 @@ function applyImageSource(src, { clearAnnotations = true } = {}) {
     }
 
     sourceImage.onload = () => {
+      stopLiveAutoReload();
       currentSourceType = "image";
       currentLiveUrl = "";
+      currentLiveOrigin = "";
+      currentLivePath = "/";
       sourceImage.style.display = "block";
       liveFrame.style.display = "none";
       liveFrame.removeAttribute("src");
@@ -203,6 +217,19 @@ function normalizeLiveUrl(value) {
   return url.href;
 }
 
+function pathFromUrl(url) {
+  return `${url.pathname}${url.search}${url.hash}` || "/";
+}
+
+function setCurrentLiveUrl(value) {
+  const url = new URL(normalizeLiveUrl(value));
+  currentLiveUrl = url.href;
+  currentLiveOrigin = url.origin;
+  currentLivePath = pathFromUrl(url);
+  liveUrlInput.value = currentLiveUrl;
+  livePathInput.value = currentLivePath;
+}
+
 function setLiveInteraction(enabled) {
   liveInteractionEnabled = Boolean(enabled);
   stage.classList.toggle("live-interaction", liveInteractionEnabled);
@@ -215,9 +242,55 @@ function setLiveInteraction(enabled) {
   });
 }
 
-function applyLiveSource(url, { clearAnnotations = true } = {}) {
+function stopLiveAutoReload() {
+  window.clearInterval(liveAutoReloadTimer);
+  liveAutoReloadTimer = null;
+}
+
+function reloadLiveFrame({ quiet = false } = {}) {
+  if (currentSourceType !== "live" || !currentLiveUrl) return;
+  liveFrame.src = currentLiveUrl;
+  if (!quiet) showToast(`画面を再読み込みしました · ${currentLivePath}`);
+}
+
+function setLiveAutoReload(enabled) {
+  stopLiveAutoReload();
+  liveAutoReloadEnabled = Boolean(enabled);
+  autoReloadLive.checked = liveAutoReloadEnabled;
+  if (liveAutoReloadEnabled && currentSourceType === "live") {
+    liveAutoReloadTimer = window.setInterval(() => {
+      reloadLiveFrame({ quiet: true });
+    }, 10000);
+  }
+  scheduleBoardSave();
+}
+
+function applyLivePath(path) {
+  if (currentSourceType !== "live" || !currentLiveOrigin) {
+    throw new Error("先にWebアプリを開いてください");
+  }
+  const target = new URL(String(path || "/").trim() || "/", `${currentLiveOrigin}/`);
+  if (target.origin !== currentLiveOrigin) {
+    throw new Error("画面パスには同じ開発サーバー内のパスを指定してください");
+  }
+  const pathChanged = pathFromUrl(target) !== currentLivePath;
+  if (pathChanged) {
+    annotations = [];
+    nextId = 1;
+  }
+  setCurrentLiveUrl(target.href);
+  liveFrame.src = currentLiveUrl;
+  render();
+  showToast(`画面を移動しました · ${currentLivePath}`);
+}
+
+function applyLiveSource(
+  url,
+  { clearAnnotations = true, autoReload = false } = {},
+) {
+  stopLiveAutoReload();
   currentSourceType = "live";
-  currentLiveUrl = normalizeLiveUrl(url);
+  setCurrentLiveUrl(url);
   currentBoardTitle = new URL(currentLiveUrl).hostname || "Live UI Review";
   sourceImage.removeAttribute("src");
   sourceImage.style.display = "none";
@@ -225,8 +298,8 @@ function applyLiveSource(url, { clearAnnotations = true } = {}) {
   liveFrame.src = currentLiveUrl;
   liveFrame.style.display = "block";
   liveModeBar.hidden = false;
-  liveUrlInput.value = currentLiveUrl;
   setLiveInteraction(false);
+  setLiveAutoReload(autoReload);
   if (clearAnnotations) annotations = [];
   render();
   scheduleBoardSave();
@@ -456,7 +529,13 @@ function promptData() {
     context: {
       coordinateSystem: "表示領域の左上を原点とするパーセント座標",
       preserveUnmentionedAreas: true,
-      ...(isLive ? { targetUrl: currentLiveUrl } : {}),
+      ...(isLive
+        ? {
+            developmentServer: currentLiveOrigin,
+            screenPath: currentLivePath,
+            targetUrl: currentLiveUrl,
+          }
+        : {}),
     },
     instructions: annotations.map((annotation, index) => ({
       id: index + 1,
@@ -493,7 +572,15 @@ function markdownPrompt(data) {
     "指定していない箇所のデザインと挙動は維持してください。",
   ];
   if (data.context.targetUrl) {
-    lines.push("", "## 対象URL", "", data.context.targetUrl);
+    lines.push(
+      "",
+      "## 開発画面",
+      "",
+      `- 開発サーバー: ${data.context.developmentServer}`,
+      `- 画面パス: ${data.context.screenPath}`,
+      `- 対象URL: ${data.context.targetUrl}`,
+      "- 修正後は同じ画面パスで表示を再確認してください。",
+    );
   }
   lines.push("", "## 修正内容");
 
@@ -733,6 +820,41 @@ liveModeBar.querySelectorAll("[data-live-mode]").forEach((button) => {
   button.addEventListener("click", () => {
     setLiveInteraction(button.dataset.liveMode === "interact");
   });
+});
+
+applyLivePathButton.addEventListener("click", () => {
+  try {
+    applyLivePath(livePathInput.value);
+  } catch (error) {
+    showToast(error.message, 3500);
+  }
+});
+
+livePathInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  applyLivePathButton.click();
+});
+
+reloadLiveFrameButton.addEventListener("click", () => reloadLiveFrame());
+
+autoReloadLive.addEventListener("change", (event) => {
+  setLiveAutoReload(event.target.checked);
+  showToast(event.target.checked ? "10秒ごとの自動更新を開始しました" : "自動更新を停止しました");
+});
+
+liveFrame.addEventListener("load", () => {
+  if (currentSourceType !== "live") return;
+  try {
+    const frameUrl = liveFrame.contentWindow.location.href;
+    if (frameUrl && frameUrl !== "about:blank") {
+      setCurrentLiveUrl(frameUrl);
+      updatePrompt();
+      scheduleBoardSave();
+    }
+  } catch {
+    // Cross-origin navigation cannot be inspected. The editable path remains authoritative.
+  }
 });
 
 function imageFromClipboardItems(items) {
@@ -1249,6 +1371,7 @@ async function clearImportedBoard(payload = {}) {
   localStorage.removeItem(annotationStorageKey(boardId));
   await deleteBoard(boardId);
   if (boardId === currentBoardId) {
+    stopLiveAutoReload();
     annotations = [];
     sourceImage.removeAttribute("src");
     sourceImage.style.display = "none";
@@ -1258,6 +1381,11 @@ async function clearImportedBoard(payload = {}) {
     demoPage.style.display = "block";
     currentSourceType = "demo";
     currentLiveUrl = "";
+    currentLiveOrigin = "";
+    currentLivePath = "/";
+    liveAutoReloadEnabled = false;
+    livePathInput.value = "/";
+    autoReloadLive.checked = false;
     currentBoardId = "default";
     currentBoardTitle = "UI Review";
     history.replaceState(null, "", location.pathname + location.search);
@@ -1274,6 +1402,9 @@ function getBoardSnapshot() {
     sourceType: currentSourceType,
     image: currentSourceType === "image" ? sourceImage.src || null : null,
     liveUrl: currentSourceType === "live" ? currentLiveUrl : null,
+    liveOrigin: currentSourceType === "live" ? currentLiveOrigin : null,
+    livePath: currentSourceType === "live" ? currentLivePath : null,
+    liveAutoReload: currentSourceType === "live" ? liveAutoReloadEnabled : false,
     annotations: structuredClone(annotations),
   };
 }
@@ -1304,7 +1435,14 @@ async function restoreBoardFromLocation() {
       : [];
   nextId = Math.max(0, ...annotations.map((item) => Number(item.id) || 0)) + 1;
   if (board.sourceType === "live" || board.liveUrl) {
-    applyLiveSource(board.liveUrl, { clearAnnotations: false });
+    const restoredUrl =
+      board.liveOrigin && board.livePath
+        ? new URL(board.livePath, `${board.liveOrigin}/`).href
+        : board.liveUrl;
+    applyLiveSource(restoredUrl, {
+      clearAnnotations: false,
+      autoReload: Boolean(board.liveAutoReload),
+    });
   } else {
     await applyImageSource(board.image, { clearAnnotations: false });
   }
@@ -1333,6 +1471,27 @@ window.Markup = {
 
 window.addEventListener("message", async (event) => {
   const message = event.data;
+  if (
+    event.source === liveFrame.contentWindow &&
+    event.origin === currentLiveOrigin &&
+    message?.type === "markup:route"
+  ) {
+    try {
+      const nextUrl = message.href
+        ? new URL(message.href, `${currentLiveOrigin}/`)
+        : new URL(message.path || "/", `${currentLiveOrigin}/`);
+      const pathChanged = pathFromUrl(nextUrl) !== currentLivePath;
+      if (pathChanged) {
+        annotations = [];
+        nextId = 1;
+      }
+      setCurrentLiveUrl(nextUrl.href);
+      render();
+    } catch {
+      // Ignore malformed route notifications from the embedded app.
+    }
+    return;
+  }
   if (!message || !MARKUP_MESSAGE_TYPES.has(message.type)) return;
 
   const expectedToken = new URL(location.href).searchParams.get("token");

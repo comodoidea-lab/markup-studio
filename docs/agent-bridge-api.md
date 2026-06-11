@@ -68,3 +68,20 @@ Set `MARKUP_URL` to omit `--url`.
 
 The CLI creates a temporary launcher under the operating system temporary directory. It does
 not write generated launcher files into the user project.
+
+## Optional live route bridge
+
+An app embedded by the live URL review can notify Markup when its client-side route changes:
+
+```js
+window.parent.postMessage(
+  {
+    type: "markup:route",
+    href: window.location.href
+  },
+  "https://your-markup.example"
+);
+```
+
+Markup accepts this message only from the currently embedded frame and its configured origin.
+Changing the path clears annotations; reloading the same path preserves them.
