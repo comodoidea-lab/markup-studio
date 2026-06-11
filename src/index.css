@@ -6,9 +6,23 @@ body,
   height: 100%;
 }
 
+:root {
+  --paper: #f4f3ed;
+  --panel: #fbfaf5;
+  --line: #d9d9d0;
+  --ink: #171813;
+}
+
 body {
   margin: 0;
   font-family:
     "Hiragino Sans", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+  color: var(--ink);
+  /* Graph-paper feel carried over from the legacy Markup. */
+  background:
+    linear-gradient(rgba(32, 33, 28, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(32, 33, 28, 0.025) 1px, transparent 1px),
+    var(--paper);
+  background-size: 24px 24px;
 }

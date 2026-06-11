@@ -325,10 +325,10 @@ export function CanvasView({ autoFit = false }: { autoFit?: boolean }) {
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full touch-none overflow-hidden bg-slate-100"
+      className="relative h-full w-full touch-none overflow-hidden bg-[#f4f3ed]"
       style={{
         backgroundImage:
-          "radial-gradient(circle, rgba(100,116,139,0.18) 1px, transparent 1px)",
+          "linear-gradient(rgba(32,33,28,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(32,33,28,0.05) 1px, transparent 1px)",
         backgroundSize: `${24 * viewport.zoom}px ${24 * viewport.zoom}px`,
         backgroundPosition: `${viewport.x}px ${viewport.y}px`,
       }}
@@ -355,7 +355,7 @@ export function CanvasView({ autoFit = false }: { autoFit?: boolean }) {
         )}
       </div>
 
-      <div className="absolute right-4 bottom-4 flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+      <div className="absolute right-4 bottom-4 flex items-center gap-1 rounded-xl border border-[#d9d9d0] bg-white p-1 shadow-lg">
         <button
           className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100"
           onClick={() => zoomBy(1 / 1.2)}

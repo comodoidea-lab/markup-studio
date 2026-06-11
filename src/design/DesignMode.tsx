@@ -50,13 +50,13 @@ export function DesignMode() {
 
   return (
     <div className="flex h-full min-h-0">
-      <aside className="w-56 shrink-0 border-r border-slate-200 bg-white">
+      <aside className="w-56 shrink-0 border-r border-[#d9d9d0] bg-[#fbfaf5]">
         <LayersPanel />
       </aside>
 
       <div className="relative min-w-0 flex-1">
         <CanvasView />
-        <div className="absolute top-3 left-3 flex items-center gap-0.5 rounded-xl border border-slate-200 bg-white p-1 shadow-md">
+        <div className="absolute top-3 left-3 flex items-center gap-0.5 rounded-xl border border-[#d9d9d0] bg-white p-1 shadow-md">
           <button
             className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
             onClick={undo}
@@ -76,7 +76,7 @@ export function DesignMode() {
         </div>
       </div>
 
-      <aside className="flex w-80 shrink-0 flex-col border-l border-slate-200 bg-white">
+      <aside className="flex w-80 shrink-0 flex-col border-l border-[#d9d9d0] bg-[#fbfaf5]">
         <div className="flex border-b border-slate-200">
           {(
             [

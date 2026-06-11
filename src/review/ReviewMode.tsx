@@ -276,13 +276,13 @@ export function ReviewMode() {
     <div className="flex h-full min-h-0 gap-4 overflow-y-auto p-4">
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+          <div className="flex items-center gap-0.5 rounded-xl border border-[#d9d9d0] bg-white p-1 shadow-sm">
             {TOOLS.map(([tool, label, Icon]) => (
               <button
                 key={tool}
                 className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
                   store.activeTool === tool
-                    ? "bg-slate-800 text-white"
+                    ? "bg-[#fff0eb] text-[#ff5a36]"
                     : "text-slate-600 hover:bg-slate-100"
                 }`}
                 onClick={() => store.setTool(tool)}

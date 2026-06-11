@@ -48,7 +48,7 @@ export default function App() {
   // through the review mode's Live URL): /?embed=canvas
   if (EMBED_VIEW) {
     return (
-      <div className="h-screen bg-slate-100 text-slate-900">
+      <div className="h-screen text-[#171813]">
         <CanvasView autoFit />
         <Toast />
       </div>
@@ -56,14 +56,14 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50 text-slate-900">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3">
+    <div className="flex h-screen flex-col text-[#171813]">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-[#d9d9d0] bg-[#f4f3ed]/90 px-3 backdrop-blur">
         <a className="flex items-center gap-2" href="#" aria-label="Markup ホーム">
           <img src="/assets/icons/favicon-32.png" alt="" className="h-6 w-6 rounded" />
           <span className="text-sm font-extrabold tracking-tight">Markup Studio</span>
         </a>
 
-        <div className="flex items-center gap-0.5 rounded-xl bg-slate-100 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-xl bg-[#e9e8e0] p-0.5">
           <button
             className={`flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-semibold ${
               mode === "design" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
