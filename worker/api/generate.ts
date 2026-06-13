@@ -48,12 +48,13 @@ function extractModelText(result: unknown): string {
   throw new Error("Workers AI response did not contain text");
 }
 
-export const onRequestOptions: PagesFunction<Env> = async ({ request }) =>
-  new Response(null, { status: 204, headers: corsHeaders(request.headers.get("origin")) });
-
-export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+export async function handleGenerate(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get("origin");
   const cors = corsHeaders(origin);
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: cors });
+  }
 
   let body: GenerateRequest;
   try {
@@ -85,7 +86,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const byteLength = Math.ceil((parsed.base64.length * 3) / 4);
     if (byteLength > MAX_IMAGE_BYTES) {
       return jsonResponse(
-        { error: `Image too large (${Math.round(byteLength / 1024)} KB). Max is ${MAX_IMAGE_BYTES / 1024 / 1024} MB.` },
+        {
+          error: `Image too large (${Math.round(byteLength / 1024)} KB). Max is ${MAX_IMAGE_BYTES / 1024 / 1024} MB.`,
+        },
         413,
         cors,
       );
@@ -101,4 +104,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const message = error instanceof Error ? error.message : "Workers AI request failed";
     return jsonResponse({ error: message }, 502, cors);
   }
-};
+}
