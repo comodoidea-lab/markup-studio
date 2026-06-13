@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useWorkersAI } from "../ai/config";
 import type { AIProvider, AISettings } from "./types";
 
 const STORAGE_KEY = "markup-ai-settings";
@@ -47,6 +48,8 @@ interface SettingsState extends StoredSettings {
   setPersistKeys: (persist: boolean) => void;
   openSettings: (open: boolean) => void;
   hasKey: () => boolean;
+  /** Workers AI backend or BYOK API key is available. */
+  canUseAI: () => boolean;
 }
 
 function persist(state: StoredSettings) {
@@ -87,4 +90,5 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   openSettings: (settingsOpen) => set({ settingsOpen }),
   hasKey: () => Boolean(get().keys[get().provider]),
+  canUseAI: () => useWorkersAI() || Boolean(get().keys[get().provider]),
 }));

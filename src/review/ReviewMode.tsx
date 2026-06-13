@@ -137,7 +137,7 @@ export function ReviewMode() {
   const [dragging, setDragging] = useState(false);
   const [recreating, setRecreating] = useState(false);
   const setMode = useAppStore((state) => state.setMode);
-  const hasKey = useSettingsStore((state) => Boolean(state.keys[state.provider]));
+  const canUseAI = useSettingsStore((state) => state.canUseAI());
   const openSettings = useSettingsStore((state) => state.openSettings);
 
   const promptText = buildPromptText(
@@ -257,7 +257,7 @@ export function ReviewMode() {
       showToast("スクリーンショットを読み込んでから実行してください", 3000);
       return;
     }
-    if (!hasKey) {
+    if (!canUseAI) {
       openSettings(true);
       return;
     }

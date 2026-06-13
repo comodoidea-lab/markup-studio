@@ -1,4 +1,5 @@
 import { useSettingsStore } from "../state/settingsStore";
+import { useWorkersAI } from "./config";
 
 export interface AIRequest {
   system: string;
@@ -8,12 +9,36 @@ export interface AIRequest {
   maxTokens?: number;
 }
 
-export class AIError extends Error {}
+export class AIError extends Error {
+  /** When true, caller may retry with BYOK providers. */
+  workersUnavailable?: boolean;
+}
 
 function splitDataUrl(dataUrl: string): { mediaType: string; base64: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!match) throw new AIError("画像データの形式が不正です");
   return { mediaType: match[1], base64: match[2] };
+}
+
+async function callWorkersAI(request: AIRequest): Promise<string> {
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  const data = (await response.json().catch(() => null)) as { text?: string; error?: string } | null;
+
+  if (response.status === 404) {
+    const error = new AIError("Workers AI backend is not available");
+    error.workersUnavailable = true;
+    throw error;
+  }
+  if (!response.ok) {
+    throw new AIError(data?.error || `Workers AI error (${response.status})`);
+  }
+  const text = data?.text?.trim();
+  if (!text) throw new AIError("AIから空の応答が返りました");
+  return text;
 }
 
 async function callAnthropic(request: AIRequest, key: string, model: string): Promise<string> {
@@ -112,10 +137,12 @@ async function callGemini(request: AIRequest, key: string, model: string): Promi
   return text;
 }
 
-export async function callAI(request: AIRequest): Promise<string> {
+async function callByok(request: AIRequest): Promise<string> {
   const { provider, keys, models } = useSettingsStore.getState();
   const key = keys[provider];
-  if (!key) throw new AIError("APIキーが未設定です。右上の設定からキーを登録してください。");
+  if (!key) {
+    throw new AIError("APIキーが未設定です。右上の設定からキーを登録してください。");
+  }
   const model = models[provider];
   switch (provider) {
     case "anthropic":
@@ -125,6 +152,20 @@ export async function callAI(request: AIRequest): Promise<string> {
     case "gemini":
       return callGemini(request, key, model);
   }
+}
+
+export async function callAI(request: AIRequest): Promise<string> {
+  if (useWorkersAI()) {
+    try {
+      return await callWorkersAI(request);
+    } catch (error) {
+      if (error instanceof AIError && error.workersUnavailable) {
+        return callByok(request);
+      }
+      throw error;
+    }
+  }
+  return callByok(request);
 }
 
 /** Extracts the first JSON object from an LLM response (handles ``` fences and prose). */

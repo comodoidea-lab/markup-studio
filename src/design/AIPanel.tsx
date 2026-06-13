@@ -9,7 +9,7 @@ export function AIPanel() {
   const chat = useDesignStore((state) => state.chat);
   const aiBusy = useDesignStore((state) => state.aiBusy);
   const select = useDesignStore((state) => state.select);
-  const hasKey = useSettingsStore((state) => Boolean(state.keys[state.provider]));
+  const canUseAI = useSettingsStore((state) => state.canUseAI());
   const provider = useSettingsStore((state) => state.provider);
   const model = useSettingsStore((state) => state.models[state.provider]);
   const openSettings = useSettingsStore((state) => state.openSettings);
@@ -22,7 +22,7 @@ export function AIPanel() {
 
   const run = async () => {
     if (!prompt.trim() || aiBusy) return;
-    if (!hasKey) {
+    if (!canUseAI) {
       openSettings(true);
       return;
     }

@@ -125,12 +125,12 @@ function SizeInput({
 function AIEditBox({ node }: { node: DesignNode }) {
   const [prompt, setPrompt] = useState("");
   const aiBusy = useDesignStore((state) => state.aiBusy);
-  const hasKey = useSettingsStore((state) => Boolean(state.keys[state.provider]));
+  const canUseAI = useSettingsStore((state) => state.canUseAI());
   const openSettings = useSettingsStore((state) => state.openSettings);
 
   const run = async () => {
     if (!prompt.trim() || aiBusy) return;
-    if (!hasKey) {
+    if (!canUseAI) {
       openSettings(true);
       return;
     }

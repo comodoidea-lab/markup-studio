@@ -1,4 +1,5 @@
 import { useSettingsStore } from "../state/settingsStore";
+import { useWorkersAI } from "../ai/config";
 import type { AIProvider } from "../state/types";
 import { KeyRound, X } from "lucide-react";
 
@@ -36,8 +37,9 @@ export function SettingsModal() {
           <KeyRound size={16} className="text-violet-600" /> AI設定 (BYOK)
         </h2>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          APIキーはこのブラウザのlocalStorageにのみ保存され、各プロバイダのAPIへ直接送信されます。
-          サーバーには一切送信されません。
+          {useWorkersAI()
+            ? "Cloudflare デプロイ時は Workers AI（/api/generate）を優先します。ローカル単体開発（npm run dev）では BYOK キーがフォールバックとして使われます。"
+            : "APIキーはこのブラウザのlocalStorageにのみ保存され、各プロバイダのAPIへ直接送信されます。サーバーには一切送信されません。"}
         </p>
 
         <div className="mt-4 space-y-3">
